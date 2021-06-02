@@ -1,99 +1,80 @@
-import * as elasticsearch from '@aws-cdk/aws-elasticsearch';
 import * as iam from '@aws-cdk/aws-iam';
 import * as s3 from '@aws-cdk/aws-s3';
 import { IResource, RemovalPolicy, Resource } from '@aws-cdk/core';
 import { Construct } from 'constructs';
+import { IDeliveryStreamDestination } from './delivery-stream-destination';
 import { CfnDeliveryStream } from './kinesisfirehose.generated';
 
-export enum DeliveryStreamType {
-  DIRECT_PUT = 'DirectPut',
-}
-
 export interface IDeliveryStream extends IResource {
+  /**
+   * The ARN of the delivery stream.
+   *
+   * @attribute
+   */
+   readonly streamArn: string;
 
-}
+   /**
+    * The name of the delivery stream
+    *
+    * @attribute
+    */
+   readonly streamName: string;
 
-export interface IDeliveryStreamDestination {
+   readonly role: iam.Role;
 
-}
+   readonly bucket: s3.Bucket;
 
-abstract class DeliveryStreamDestination implements IDeliveryStreamDestination {
-
-}
-
-export interface ElasticSearchDestinationProps {
-
-  readonly domain: elasticsearch.IDomain;
-
-  readonly indexName: string;
-}
-
-export class ElasticSearchDestination extends DeliveryStreamDestination {
-
-  readonly domain: elasticsearch.IDomain;
-
-  readonly indexName: string;
-
-  constructor(props: ElasticSearchDestinationProps) {
-    super();
-    this.domain = props.domain;
-    this.indexName = props.indexName;
-  }
+   addElasticSearchDestination(configuration: CfnDeliveryStream.ElasticsearchDestinationConfigurationProperty): void;
 }
 
 export interface DeliveryStreamProps {
 
-  readonly deliveryStreamType: DeliveryStreamType;
+  readonly deliveryStreamType?: string;
 
   readonly destination: IDeliveryStreamDestination;
+
+  readonly role?: iam.Role;
+
+  readonly bucket?: s3.Bucket;
 }
 
-abstract class DeliveryStreamBase extends Resource implements IDeliveryStream {
+export class DeliveryStream extends Resource implements IDeliveryStream {
 
-}
+  public readonly streamArn: string;
+  public readonly streamName: string;
+  public readonly role: iam.Role;
+  public readonly bucket: s3.Bucket;
 
-export class DeliveryStream extends DeliveryStreamBase {
+  private readonly deliveryStream: CfnDeliveryStream;
 
   constructor(scope: Construct, id: string, props: DeliveryStreamProps) {
     super(scope, id);
 
-    const role = new iam.Role(this, 'Role', {
+    this.role = props.role || new iam.Role(this, 'Role', {
       assumedBy: new iam.ServicePrincipal('firehose.amazonaws.com'),
     });
 
-    const firehoseBucket = new s3.Bucket(this, 'Bucket');
+    this.bucket = props.bucket || new s3.Bucket(this, 'Bucket', {
+      removalPolicy: RemovalPolicy.DESTROY,
+    });
+    this.bucket.grantReadWrite(this.role);
 
-    firehoseBucket.applyRemovalPolicy(RemovalPolicy.DESTROY);
-    firehoseBucket.grantReadWrite(role);
+    this.deliveryStream = new CfnDeliveryStream(this, 'Resource', {
+      deliveryStreamType: props.deliveryStreamType ?? 'DirectPut',
+    });
+    this.deliveryStream.node.addDependency(this.role);
 
-    if (props.destination instanceof ElasticSearchDestination) {
-      props.destination.domain.grantReadWrite(role);
+    props.destination.bind(this);
 
-      role.addToPolicy(new iam.PolicyStatement({
-        actions: [
-          'es:DescribeElasticsearchDomain',
-          'es:DescribeElasticsearchDomains',
-          'es:DescribeElasticsearchDomainConfig',
-        ],
-        resources: [
-          props.destination.domain.domainArn,
-          props.destination.domain.domainArn + '/*',
-        ],
-      }));
+    this.streamArn = this.getResourceArnAttribute(this.deliveryStream.attrArn, {
+      service: 'kinesis',
+      resource: 'deliverystream',
+      resourceName: this.physicalName,
+    });
+    this.streamName = this.getResourceNameAttribute(this.deliveryStream.ref);
+  }
 
-      const deliveryStream = new CfnDeliveryStream(this, 'Resource', {
-        deliveryStreamType: props.deliveryStreamType.toString(),
-        elasticsearchDestinationConfiguration: {
-          indexName: props.destination.indexName,
-          roleArn: role.roleArn,
-          s3Configuration: {
-            bucketArn: firehoseBucket.bucketArn,
-            roleArn: role.roleArn,
-          },
-          domainArn: props.destination.domain.domainArn,
-        },
-      });
-      deliveryStream.node.addDependency(role);
-    }
+  public addElasticSearchDestination(configuration: CfnDeliveryStream.ElasticsearchDestinationConfigurationProperty) {
+    this.deliveryStream.elasticsearchDestinationConfiguration = configuration;
   }
 }
