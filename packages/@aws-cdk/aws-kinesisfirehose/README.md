@@ -33,10 +33,10 @@ const devDomain = new es.Domain(this, 'MyDomain', {
 });
 
 const deliveryStream = new firehose.DeliveryStream(this, 'MyDeliveryStream', {
-      destination: new firehose.ElasticSearchDestination({
-        domain: devDomain,
-        indexName: 'MyIndex',
-      }),
-      deliveryStreamType: firehose.DeliveryStreamType.DIRECT_PUT
+  destination: new firehose.ElasticSearchDestination({
+    domain: devDomain,
+    indexName: 'MyIndex',
+  }),
+  deliveryStreamType: firehose.DeliveryStreamType.DIRECT_PUT,
 });
 ```
