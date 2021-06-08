@@ -5,45 +5,115 @@ import { Construct } from 'constructs';
 import { IDeliveryStreamDestination } from './delivery-stream-destination';
 import { CfnDeliveryStream } from './kinesisfirehose.generated';
 
+/**
+ * Represents a Kinesis Data Firehose delivery stream.
+ */
 export interface IDeliveryStream extends IResource {
   /**
    * The ARN of the delivery stream.
    *
    * @attribute
    */
-   readonly streamArn: string;
+  readonly deliveryStreamArn: string;
 
-   /**
+  /**
     * The name of the delivery stream
     *
     * @attribute
     */
-   readonly streamName: string;
+  readonly deliveryStreamName: string;
 
-   readonly role: iam.Role;
+  /**
+   * TODO Add doc
+   */
+  readonly role: iam.IRole;
 
-   readonly bucket: s3.Bucket;
+  /**
+   * TODO Add doc
+   */
+  readonly bucket: s3.IBucket;
 
-   addElasticSearchDestination(configuration: CfnDeliveryStream.ElasticsearchDestinationConfigurationProperty): void;
+  /**
+   * TODO Add doc
+   */
+  addElasticSearchDestination(configuration: CfnDeliveryStream.ElasticsearchDestinationConfigurationProperty): void;
+
+  /**
+   * TODO Add doc
+   */
+  addS3Destination(configuration: CfnDeliveryStream.S3DestinationConfigurationProperty): void;
 }
 
+/**
+ * Properties for a new delivery stream
+ */
 export interface DeliveryStreamProps {
 
+  /**
+   * The name of the delivery stream
+   *
+   * @attribute
+   */
+  readonly deliveryStreamName: string;
+
+  /**
+   * The type of the delivery stream
+   *
+   * @attribute
+   */
   readonly deliveryStreamType?: string;
 
+  /**
+   * TODO Add doc
+   */
   readonly destination: IDeliveryStreamDestination;
 
-  readonly role?: iam.Role;
+  /**
+   * TODO Add doc
+   *
+   * @default - TODO
+   */
+  readonly role?: iam.IRole;
 
-  readonly bucket?: s3.Bucket;
+  /**
+   * TODO Add doc
+   *
+   * @default - TODO
+   */
+  readonly bucket?: s3.IBucket;
 }
 
+/**
+ * TODO Add doc
+ */
 export class DeliveryStream extends Resource implements IDeliveryStream {
 
-  public readonly streamArn: string;
-  public readonly streamName: string;
-  public readonly role: iam.Role;
-  public readonly bucket: s3.Bucket;
+  /**
+   * TODO Implement a fromXxx method
+   */
+  public static fromDeliveryStreamName(scope: Construct, id: string, deliveryStreamName: string) {
+    return { scope, id, deliveryStreamName } as unknown as IDeliveryStream;
+  }
+
+  /**
+   * TODO Add doc
+   */
+  public readonly deliveryStreamArn: string;
+
+  /**
+   * TODO Add doc
+   */
+  public readonly deliveryStreamName: string;
+
+  /**
+   * TODO Add doc
+   */
+  public readonly role: iam.IRole;
+
+  /**
+   * TODO Add doc
+   */
+  public readonly bucket: s3.IBucket;
 
   private readonly deliveryStream: CfnDeliveryStream;
 
@@ -59,22 +129,27 @@ export class DeliveryStream extends Resource implements IDeliveryStream {
     });
     this.bucket.grantReadWrite(this.role);
 
+    const destinationConfig = props.destination.bind(this);
+
     this.deliveryStream = new CfnDeliveryStream(this, 'Resource', {
       deliveryStreamType: props.deliveryStreamType ?? 'DirectPut',
+      ...destinationConfig.properties,
     });
     this.deliveryStream.node.addDependency(this.role);
 
-    props.destination.bind(this);
-
-    this.streamArn = this.getResourceArnAttribute(this.deliveryStream.attrArn, {
+    this.deliveryStreamArn = this.getResourceArnAttribute(this.deliveryStream.attrArn, {
       service: 'kinesis',
       resource: 'deliverystream',
       resourceName: this.physicalName,
     });
-    this.streamName = this.getResourceNameAttribute(this.deliveryStream.ref);
+    this.deliveryStreamName = this.getResourceNameAttribute(this.deliveryStream.ref);
   }
 
   public addElasticSearchDestination(configuration: CfnDeliveryStream.ElasticsearchDestinationConfigurationProperty) {
     this.deliveryStream.elasticsearchDestinationConfiguration = configuration;
+  }
+
+  public addS3Destination(configuration: CfnDeliveryStream.S3DestinationConfigurationProperty): void {
+    this.deliveryStream.s3DestinationConfiguration = configuration;
   }
 }
