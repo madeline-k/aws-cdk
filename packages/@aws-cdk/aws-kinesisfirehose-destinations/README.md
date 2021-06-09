@@ -1,13 +1,7 @@
-# Amazon Kinesis Data Firehose Construct Library
+# Amazon Kinesis Firehose Destinations Library
 <!--BEGIN STABILITY BANNER-->
 
 ---
-
-![cfn-resources: Stable](https://img.shields.io/badge/cfn--resources-stable-success.svg?style=for-the-badge)
-
-> All classes with the `Cfn` prefix in this module ([CFN Resources]) are always stable and safe to use.
->
-> [CFN Resources]: https://docs.aws.amazon.com/cdk/latest/guide/constructs.html#constructs_lib
 
 ![cdk-constructs: Experimental](https://img.shields.io/badge/cdk--constructs-experimental-important.svg?style=for-the-badge)
 
@@ -21,7 +15,16 @@
 
 <!--END STABILITY BANNER-->
 
-This module is part of the [AWS Cloud Development Kit](https://github.com/aws/aws-cdk) project.
+This library provides constructs for adding destinations to a Kinesis Firehose delivery stream.
+Destinations can be added by specifying the `destination` prop when creating a delivery stream.
+
+## Destinations
+
+The following destinations are supported
+
+* Elasticsearch
+
+Example with an Elasticsearch destination:
 
 ``` typescript
 import * as es from '@aws-cdk/aws-elasticsearch';
@@ -34,7 +37,7 @@ const myDomain = new es.Domain(this, 'Domain', {
 
 const deliveryStream = new firehose.DeliveryStream(this, 'DeliveryStream', {
   destination: new destinations.ElasticsearchDestination({
-    domain: myDomain,
+    domain: devDomain,
     indexName: 'myindex',
   }),
 });

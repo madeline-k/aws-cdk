@@ -1,6 +1,7 @@
+import * as cloudwatch from '@aws-cdk/aws-cloudwatch';
 import * as iam from '@aws-cdk/aws-iam';
 import * as s3 from '@aws-cdk/aws-s3';
-import { IResource, RemovalPolicy, Resource } from '@aws-cdk/core';
+import { IResource, RemovalPolicy, Resource, Stack } from '@aws-cdk/core';
 import { Construct } from 'constructs';
 import { IDeliveryStreamDestination } from './delivery-stream-destination';
 import { CfnDeliveryStream } from './kinesisfirehose.generated';
@@ -17,39 +18,6 @@ export interface IDeliveryStream extends IResource {
   readonly deliveryStreamArn: string;
 
   /**
-    * The name of the delivery stream
-    *
-    * @attribute
-    */
-  readonly deliveryStreamName: string;
-
-  /**
-   * TODO Add doc
-   */
-  readonly role: iam.IRole;
-
-  /**
-   * TODO Add doc
-   */
-  readonly bucket: s3.IBucket;
-
-  /**
-   * TODO Add doc
-   */
-  addElasticSearchDestination(configuration: CfnDeliveryStream.ElasticsearchDestinationConfigurationProperty): void;
-
-  /**
-   * TODO Add doc
-   */
-  addS3Destination(configuration: CfnDeliveryStream.S3DestinationConfigurationProperty): void;
-}
-
-/**
- * Properties for a new delivery stream
- */
-export interface DeliveryStreamProps {
-
-  /**
    * The name of the delivery stream
    *
    * @attribute
@@ -57,65 +25,119 @@ export interface DeliveryStreamProps {
   readonly deliveryStreamName: string;
 
   /**
-   * The type of the delivery stream
+   * Grant the indicated permissions on this delivery stream to the provided IAM principal.
+   */
+  grant(grantee: iam.IGrantable, ...actions: string[]): iam.Grant;
+
+  /**
+   * Return delivery stream metric based from its metric name
    *
-   * @attribute
+   * @param metricName name of the delivery stream metric
+   * @param props properties of the metric
+   */
+  metric(metricName: string, props?: cloudwatch.MetricOptions): cloudwatch.Metric;
+}
+
+/**
+ * Represents a Kinesis Firehose Delivery Stream
+ */
+abstract class DeliveryStreamBase extends Resource implements IDeliveryStream {
+  public abstract readonly deliveryStreamArn: string;
+  public abstract readonly deliveryStreamName: string;
+
+  /**
+   * Grant the indicated permissions on this delivery stream to the given IAM principal (Role/Group/User).
+   */
+  public grant(grantee: iam.IGrantable, ...actions: string[]) {
+    return iam.Grant.addToPrincipal({
+      grantee,
+      actions,
+      resourceArns: [this.deliveryStreamName],
+      scope: this,
+    });
+  }
+
+  /**
+   * Return delivery stream metric based from its metric name
+   *
+   * @param metricName name of the stream metric
+   * @param props properties of the metric
+   */
+  public metric(metricName: string, props?: cloudwatch.MetricOptions) {
+    return new cloudwatch.Metric({
+      namespace: 'AWS/Firehose',
+      metricName,
+      dimensions: {
+        StreamName: this.deliveryStreamName,
+      },
+      ...props,
+    }).attachTo(this);
+  }
+}
+
+/**
+ * Properties for a Kinesis Firehose Delivery Stream
+ */
+export interface DeliveryStreamProps {
+
+  /**
+   * The S3 bucket where Kinesis Data Firehose backs up incoming data.
+   * @default - A new S3 bucket will be created.
+   */
+  readonly bucket?: s3.IBucket;
+
+  /**
+   * The delivery stream type
+   * @default - "DirectPut"
    */
   readonly deliveryStreamType?: string;
 
   /**
-   * TODO Add doc
+   * Enforces a particular delivery stream name.
+   * @default <generated>
+   */
+  readonly deliveryStreamName?: string;
+
+  /**
+   * The delivery stream destination.
    */
   readonly destination: IDeliveryStreamDestination;
 
   /**
-   * TODO Add doc
-   *
-   * @default - TODO
+   * The IAM role associated with this delivery stream.
+   * @default - A new role will be created.
    */
   readonly role?: iam.IRole;
-
-  /**
-   * TODO Add doc
-   *
-   * @default - TODO
-   */
-  readonly bucket?: s3.IBucket;
 }
 
+
 /**
- * TODO Add doc
+ * A Kinesis Firehose Delivery Stream
  */
-export class DeliveryStream extends Resource implements IDeliveryStream {
+export class DeliveryStream extends DeliveryStreamBase {
 
   /**
-   * TODO Implement a fromXxx method
+   * Import an existing Kinesis Firehose Delivery Stream provided an ARN.
+   *
+   * @param scope The parent creating construct (usually `this`).
+   * @param id The construct's name
+   * @param deliveryStreamArn Delivery Stream ARN (i.e. arn:aws:firehose:<region>:<account-id>:deliverystream/Foo
    */
-  public static fromDeliveryStreamName(scope: Construct, id: string, deliveryStreamName: string) {
-    return { scope, id, deliveryStreamName } as unknown as IDeliveryStream;
+  public static fromDeliveryStreamArn(scope: Construct, id: string, deliveryStreamArn: string): IDeliveryStream {
+    class Import extends DeliveryStreamBase {
+      public readonly deliveryStreamArn = deliveryStreamArn;
+      public readonly deliveryStreamName = Stack.of(scope).parseArn(deliveryStreamArn).resourceName!;
+    }
+
+    return new Import(scope, id);
   }
 
-  /**
-   * TODO Add doc
-   */
   public readonly deliveryStreamArn: string;
-
-  /**
-   * TODO Add doc
-   */
   public readonly deliveryStreamName: string;
 
-  /**
-   * TODO Add doc
-   */
-  public readonly role: iam.IRole;
-
-  /**
-   * TODO Add doc
-   */
-  public readonly bucket: s3.IBucket;
-
+  private readonly bucket: s3.IBucket;
   private readonly deliveryStream: CfnDeliveryStream;
+  private readonly role: iam.IRole;
 
   constructor(scope: Construct, id: string, props: DeliveryStreamProps) {
     super(scope, id);
@@ -129,7 +151,10 @@ export class DeliveryStream extends Resource implements IDeliveryStream {
     });
     this.bucket.grantReadWrite(this.role);
 
-    const destinationConfig = props.destination.bind(this);
+    const destinationConfig = props.destination.bind({
+      role: this.role,
+      bucket: this.bucket,
+    });
 
     this.deliveryStream = new CfnDeliveryStream(this, 'Resource', {
       deliveryStreamType: props.deliveryStreamType ?? 'DirectPut',
@@ -143,13 +168,5 @@ export class DeliveryStream extends Resource implements IDeliveryStream {
       resourceName: this.physicalName,
     });
     this.deliveryStreamName = this.getResourceNameAttribute(this.deliveryStream.ref);
-  }
-
-  public addElasticSearchDestination(configuration: CfnDeliveryStream.ElasticsearchDestinationConfigurationProperty) {
-    this.deliveryStream.elasticsearchDestinationConfiguration = configuration;
-  }
-
-  public addS3Destination(configuration: CfnDeliveryStream.S3DestinationConfigurationProperty): void {
-    this.deliveryStream.s3DestinationConfiguration = configuration;
   }
 }
