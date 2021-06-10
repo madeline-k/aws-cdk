@@ -54,7 +54,13 @@ export abstract class DeliveryStreamBase extends Resource implements IDeliverySt
 
   abstract readonly grantPrincipal: iam.IPrincipal;
 
-  abstract readonly connections: ec2.Connections;
+  public readonly connections: ec2.Connections;
+
+  constructor(scope: Construct, id: string) {
+    super(scope, id);
+
+    this.connections = setConnections(this);
+  }
 
   public grant(grantee: iam.IGrantable, ...actions: string[]): iam.Grant {
     return iam.Grant.addToPrincipal({
@@ -178,7 +184,6 @@ export class DeliveryStream extends DeliveryStreamBase {
         resourceName: deliveryStreamName,
       })
       public readonly grantPrincipal = new iam.UnknownPrincipal({ resource: this });
-      public readonly connections = setConnections(this);
     }
     return new Import(scope, id);
   }
@@ -191,7 +196,6 @@ export class DeliveryStream extends DeliveryStreamBase {
       public readonly deliveryStreamName: string;
       public readonly deliveryStreamArn = deliveryStreamArn;
       public readonly grantPrincipal = new iam.UnknownPrincipal({ resource: this });
-      public readonly connections = setConnections(this);
 
       constructor(importScope: Construct, importId: string) {
         super(importScope, importId);
@@ -212,8 +216,6 @@ export class DeliveryStream extends DeliveryStreamBase {
 
   readonly grantPrincipal: iam.IPrincipal;
 
-  readonly connections: ec2.Connections;
-
   constructor(scope: Construct, id: string, props: DeliveryStreamProps) {
     super(scope, id);
 
@@ -227,8 +229,6 @@ export class DeliveryStream extends DeliveryStreamBase {
     const bucket = props.bucket || new s3.Bucket(this, 'Bucket');
     bucket.grantReadWrite(this);
     */
-
-    this.connections = setConnections(this);
 
     const encryptionKey = props.encryptionKey ?? (props.encryption === StreamEncryption.CUSTOMER_MANAGED ? new kms.Key(this, 'Key') : undefined);
     const encryptionConfig = (encryptionKey || (props.encryption === StreamEncryption.AWS_OWNED)) ? {
