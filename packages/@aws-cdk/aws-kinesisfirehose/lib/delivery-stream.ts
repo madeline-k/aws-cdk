@@ -183,6 +183,29 @@ export class DeliveryStream extends DeliveryStreamBase {
     return new Import(scope, id);
   }
 
+  /**
+   * Import an existing delivery stream from its ARN.
+   */
+  static fromDeliveryStreamArn(scope: Construct, id: string, deliveryStreamArn: string): IDeliveryStream {
+    class Import extends DeliveryStreamBase {
+      public readonly deliveryStreamName: string;
+      public readonly deliveryStreamArn = deliveryStreamArn;
+      public readonly grantPrincipal = new iam.UnknownPrincipal({ resource: this });
+      public readonly connections = setConnections(this);
+
+      constructor(importScope: Construct, importId: string) {
+        super(importScope, importId);
+
+        const deliveryStreamName = Stack.of(this).parseArn(deliveryStreamArn).resourceName;
+        if (!deliveryStreamName) {
+          throw new Error('Malformatted ARN');
+        }
+        this.deliveryStreamName = deliveryStreamName;
+      }
+    }
+    return new Import(scope, id);
+  }
+
   readonly deliveryStreamName: string;
 
   readonly deliveryStreamArn: string;
