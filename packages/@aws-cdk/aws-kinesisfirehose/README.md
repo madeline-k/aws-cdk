@@ -21,21 +21,19 @@
 
 <!--END STABILITY BANNER-->
 
-This module is part of the [AWS Cloud Development Kit](https://github.com/aws/aws-cdk) project.
+This module is part of the [AWS Cloud Development Kit](https://github.com/aws/aws-cdk) project. It allows you to create Kinesis Data Firehose delivery streams.
 
-``` typescript
-import * as es from '@aws-cdk/aws-elasticsearch';
-import * as firehose from '@aws-cdk/aws-kinesisfirehose';
-import * as destinations from '@aws-cdk/aws-kinesisfirehose-destinations';
-
-const myDomain = new es.Domain(this, 'Domain', {
-  version: es.ElasticsearchVersion.V7_1,
+```ts
+const destination: IDestination = (void '...', {
+  bind(_scope: Construct, _options: DestinationBindOptions): DestinationConfig {
+    return {
+      properties: {},
+    };
+  }
 });
-
-const deliveryStream = new firehose.DeliveryStream(this, 'DeliveryStream', {
-  destination: new destinations.ElasticsearchDestination({
-    domain: myDomain,
-    indexName: 'myindex',
-  }),
+new DeliveryStream(this, 'Delivery Stream', {
+  destination,
 });
 ```
+
+See [aws-kinesisfirehose-destinations](../aws-kinesisfirehose-destinations) for various destinations.

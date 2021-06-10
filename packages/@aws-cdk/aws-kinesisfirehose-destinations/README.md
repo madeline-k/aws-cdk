@@ -20,25 +20,69 @@ Destinations can be added by specifying the `destination` prop when creating a d
 
 ## Destinations
 
-The following destinations are supported
+The following destinations are supported.
 
-* Elasticsearch
+### Elasticsearch
 
 Example with an Elasticsearch destination:
 
-``` typescript
+```ts
 import * as es from '@aws-cdk/aws-elasticsearch';
 import * as firehose from '@aws-cdk/aws-kinesisfirehose';
-import * as destinations from '@aws-cdk/aws-kinesisfirehose-destinations';
 
-const myDomain = new es.Domain(this, 'Domain', {
+const domain = new es.Domain(this, 'Domain', {
   version: es.ElasticsearchVersion.V7_1,
 });
 
 const deliveryStream = new firehose.DeliveryStream(this, 'DeliveryStream', {
-  destination: new destinations.ElasticsearchDestination({
-    domain: devDomain,
+  destination: new ElasticsearchDestination({
+    domain: domain,
     indexName: 'myindex',
   }),
+});
+```
+
+### Redshift
+
+```ts
+import * as ec2 from '@aws-cdk/aws-ec2';
+import * as firehose from '@aws-cdk/aws-kinesisfirehose';
+import * as redshift from '@aws-cdk/aws-redshift';
+import { Duration, Size } from '@aws-cdk/core';
+
+// Given a Redshift cluster
+const vpc = new ec2.Vpc(this, 'Vpc');
+const database = 'my_db';
+const cluster = new redshift.Cluster(this, 'Cluster', {
+  vpc: vpc,
+  vpcSubnets: {
+    subnetType: ec2.SubnetType.PUBLIC,
+  },
+  masterUser: {
+    masterUsername: 'master',
+  },
+  defaultDatabaseName: database,
+  publiclyAccessible: true,
+});
+
+const redshiftDestination = new RedshiftDestination({
+  cluster: cluster,
+  user: {
+    username: 'firehose',
+  },
+  database: database,
+  tableName: 'firehose_test_table',
+  tableColumns: [
+    { name: 'TICKER_SYMBOL', dataType: 'varchar(4)' },
+    { name: 'SECTOR', dataType: 'varchar(16)' },
+    { name: 'CHANGE', dataType: 'float' },
+    { name: 'PRICE', dataType: 'float' },
+  ],
+  copyOptions: 'json \'auto\'',
+  bufferingInterval: Duration.minutes(1),
+  bufferingSize: Size.mebibytes(1),
+});
+new firehose.DeliveryStream(this, 'Firehose', {
+  destination: redshiftDestination,
 });
 ```

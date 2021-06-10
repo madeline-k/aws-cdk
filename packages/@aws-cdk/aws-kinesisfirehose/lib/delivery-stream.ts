@@ -1,15 +1,18 @@
 import * as cloudwatch from '@aws-cdk/aws-cloudwatch';
+import * as ec2 from '@aws-cdk/aws-ec2';
 import * as iam from '@aws-cdk/aws-iam';
-import * as s3 from '@aws-cdk/aws-s3';
-import { IResource, RemovalPolicy, Resource, Stack } from '@aws-cdk/core';
+import * as kinesis from '@aws-cdk/aws-kinesis';
+import * as kms from '@aws-cdk/aws-kms';
+import { CfnMapping, Fn, IResource, Resource, Stack } from '@aws-cdk/core';
+import { RegionInfo } from '@aws-cdk/region-info';
 import { Construct } from 'constructs';
-import { IDeliveryStreamDestination } from './delivery-stream-destination';
+import { IDestination } from './destination';
 import { CfnDeliveryStream } from './kinesisfirehose.generated';
 
 /**
  * Represents a Kinesis Data Firehose delivery stream.
  */
-export interface IDeliveryStream extends IResource {
+export interface IDeliveryStream extends IResource, iam.IGrantable, ec2.IConnectable {
   /**
    * The ARN of the delivery stream.
    *
@@ -25,50 +28,53 @@ export interface IDeliveryStream extends IResource {
   readonly deliveryStreamName: string;
 
   /**
-   * Grant the indicated permissions on this delivery stream to the provided IAM principal.
+   * Grant the given identity permissions to perform the given actions.
    */
   grant(grantee: iam.IGrantable, ...actions: string[]): iam.Grant;
 
   /**
-   * Return delivery stream metric based from its metric name
-   *
-   * @param metricName name of the delivery stream metric
-   * @param props properties of the metric
+   * Grant the given identity permissions to write data to this stream.
+   */
+  grantWrite(grantee: iam.IGrantable): iam.Grant;
+
+  /**
+   * Return the given named metric for this delivery stream
    */
   metric(metricName: string, props?: cloudwatch.MetricOptions): cloudwatch.Metric;
 }
 
 /**
- * Represents a Kinesis Firehose Delivery Stream
+ * Base class for new and imported Kinesis Data Firehose delivery streams
  */
-abstract class DeliveryStreamBase extends Resource implements IDeliveryStream {
-  public abstract readonly deliveryStreamArn: string;
-  public abstract readonly deliveryStreamName: string;
+export abstract class DeliveryStreamBase extends Resource implements IDeliveryStream {
 
-  /**
-   * Grant the indicated permissions on this delivery stream to the given IAM principal (Role/Group/User).
-   */
-  public grant(grantee: iam.IGrantable, ...actions: string[]) {
+  abstract readonly deliveryStreamName: string;
+
+  abstract readonly deliveryStreamArn: string;
+
+  abstract readonly grantPrincipal: iam.IPrincipal;
+
+  abstract readonly connections: ec2.Connections;
+
+  public grant(grantee: iam.IGrantable, ...actions: string[]): iam.Grant {
     return iam.Grant.addToPrincipal({
-      grantee,
-      actions,
-      resourceArns: [this.deliveryStreamName],
-      scope: this,
+      resourceArns: [this.deliveryStreamArn],
+      grantee: grantee,
+      actions: actions,
     });
   }
 
-  /**
-   * Return delivery stream metric based from its metric name
-   *
-   * @param metricName name of the stream metric
-   * @param props properties of the metric
-   */
-  public metric(metricName: string, props?: cloudwatch.MetricOptions) {
+  public grantWrite(grantee: iam.IGrantable): iam.Grant {
+    return this.grant(grantee, 'firehose:PutRecord', 'firehose:PutRecordBatch');
+  }
+
+  // TODO: use canned metrics
+  public metric(metricName: string, props?: cloudwatch.MetricOptions): cloudwatch.Metric {
     return new cloudwatch.Metric({
       namespace: 'AWS/Firehose',
-      metricName,
+      metricName: metricName,
       dimensions: {
-        StreamName: this.deliveryStreamName,
+        DeliveryStreamName: this.deliveryStreamName,
       },
       ...props,
     }).attachTo(this);
@@ -76,97 +82,184 @@ abstract class DeliveryStreamBase extends Resource implements IDeliveryStream {
 }
 
 /**
- * Properties for a Kinesis Firehose Delivery Stream
+ * Options for server-side encryption of a delivery stream
+ */
+export enum StreamEncryption {
+  /**
+   * Data in the stream is stored unencrypted.
+   */
+  UNENCRYPTED,
+
+  /**
+   * Data in the stream is stored encrypted by a KMS key managed by the customer.
+   */
+  CUSTOMER_MANAGED,
+
+  /**
+   * Data in the stream is stored encrypted by a KMS key owned by AWS and managed for use in multiple AWS accounts.
+   */
+  AWS_OWNED
+}
+
+/**
+ * Properties for a new delivery stream
  */
 export interface DeliveryStreamProps {
-
   /**
-   * The S3 bucket where Kinesis Data Firehose backs up incoming data.
-   * @default - A new S3 bucket will be created.
+   * The destination that this delivery stream will deliver data to.
+   *
+   * TODO: figure out if multiple destinations are supported (describe stream API return value seems to indicate so) and convert this to a list
    */
-  readonly bucket?: s3.IBucket;
+  readonly destination: IDestination;
 
   /**
-   * The delivery stream type
-   * @default - "DirectPut"
-   */
-  readonly deliveryStreamType?: string;
-
-  /**
-   * Enforces a particular delivery stream name.
-   * @default <generated>
+   * A name for the delivery stream.
+   *
+   * @default - a name is generated by CloudFormation.
    */
   readonly deliveryStreamName?: string;
 
   /**
-   * The delivery stream destination.
+   * The Kinesis data stream to use as a source for this delivery stream.
+   *
+   * @default - data is written to the delivery stream via a direct put.
    */
-  readonly destination: IDeliveryStreamDestination;
+  readonly sourceStream?: kinesis.IStream;
 
   /**
-   * The IAM role associated with this delivery stream.
-   * @default - A new role will be created.
+   * The IAM role assumed by Kinesis Firehose to read from sources, invoke processors, and write to destinations
+   *
+   * @default - a role will be created with default permissions.
    */
   readonly role?: iam.IRole;
-}
 
-
-/**
- * A Kinesis Firehose Delivery Stream
- */
-export class DeliveryStream extends DeliveryStreamBase {
+  // TODO: move bucket from destination?
+  /**
+   * The S3 bucket where Kinesis Data Firehose backs up incoming data.
+   *
+   * @default - A new S3 bucket will be created.
+   */
+  // readonly bucket?: s3.IBucket;
 
   /**
-   * Import an existing Kinesis Firehose Delivery Stream provided an ARN.
+   * Indicates the type of customer master key (CMK) to use for server-side encryption, if any.
    *
-   * @param scope The parent creating construct (usually `this`).
-   * @param id The construct's name
-   * @param deliveryStreamArn Delivery Stream ARN (i.e. arn:aws:firehose:<region>:<account-id>:deliverystream/Foo
+   * If `encryptionKey` is provided, this will be implicitly set to `CUSTOMER_MANAGED`.
+   *
+   * @default StreamEncryption.UNENCRYPTED.
    */
-  public static fromDeliveryStreamArn(scope: Construct, id: string, deliveryStreamArn: string): IDeliveryStream {
-    class Import extends DeliveryStreamBase {
-      public readonly deliveryStreamArn = deliveryStreamArn;
-      public readonly deliveryStreamName = Stack.of(scope).parseArn(deliveryStreamArn).resourceName!;
-    }
+  readonly encryption?: StreamEncryption;
 
+  /**
+   * Customer managed key to server-side encrypt data in the stream.
+   *
+   * @default - if `encryption` is set to `CUSTOMER_MANAGED`, a KMS key will be created for you.
+   */
+  readonly encryptionKey?: kms.IKey;
+
+  // TODO: tags?
+}
+
+/**
+ * Create a Kinesis Data Firehose delivery stream
+ *
+ * @resource AWS::KinesisFirehose::DeliveryStream
+ */
+export class DeliveryStream extends DeliveryStreamBase {
+  /**
+   * Import an existing delivery stream from its name.
+   */
+  static fromDeliveryStreamName(scope: Construct, id: string, deliveryStreamName: string): IDeliveryStream {
+    class Import extends DeliveryStreamBase {
+      public readonly deliveryStreamName = deliveryStreamName;
+      public readonly deliveryStreamArn = Stack.of(scope).formatArn({
+        service: 'firehose',
+        resource: 'deliverystream',
+        resourceName: deliveryStreamName,
+      })
+      public readonly grantPrincipal = new iam.UnknownPrincipal({ resource: this });
+      public readonly connections = setConnections(this);
+    }
     return new Import(scope, id);
   }
 
-  public readonly deliveryStreamArn: string;
-  public readonly deliveryStreamName: string;
+  readonly deliveryStreamName: string;
 
-  private readonly bucket: s3.IBucket;
-  private readonly deliveryStream: CfnDeliveryStream;
-  private readonly role: iam.IRole;
+  readonly deliveryStreamArn: string;
+
+  readonly grantPrincipal: iam.IPrincipal;
+
+  readonly connections: ec2.Connections;
 
   constructor(scope: Construct, id: string, props: DeliveryStreamProps) {
     super(scope, id);
 
-    this.role = props.role || new iam.Role(this, 'Role', {
+    const role = props.role ?? new iam.Role(this, 'Service Role', {
       assumedBy: new iam.ServicePrincipal('firehose.amazonaws.com'),
     });
+    this.grantPrincipal = role;
 
-    this.bucket = props.bucket || new s3.Bucket(this, 'Bucket', {
-      removalPolicy: RemovalPolicy.DESTROY,
-    });
-    this.bucket.grantReadWrite(this.role);
+    // TODO: move bucket from destination props?
+    /*
+    const bucket = props.bucket || new s3.Bucket(this, 'Bucket');
+    bucket.grantReadWrite(this);
+    */
 
-    const destinationConfig = props.destination.bind({
-      role: this.role,
-      bucket: this.bucket,
-    });
+    this.connections = setConnections(this);
 
-    this.deliveryStream = new CfnDeliveryStream(this, 'Resource', {
-      deliveryStreamType: props.deliveryStreamType ?? 'DirectPut',
+    const encryptionKey = props.encryptionKey ?? (props.encryption === StreamEncryption.CUSTOMER_MANAGED ? new kms.Key(this, 'Key') : undefined);
+    const encryptionConfig = (encryptionKey || (props.encryption === StreamEncryption.AWS_OWNED)) ? {
+      keyArn: encryptionKey?.keyArn,
+      keyType: encryptionKey ? 'CUSTOMER_MANAGED_CMK' : 'AWS_OWNED_CMK',
+    } : undefined;
+    // TODO: we probably need to grant access to the role
+
+    props.sourceStream?.grantRead(role); // TODO: may need to be DescribeStream instead of DescribeStreamSummary
+    const streamSourceConfig = props.sourceStream ? {
+      kinesisStreamArn: props.sourceStream?.streamArn,
+      roleArn: role.roleArn,
+    } : undefined;
+
+    const destinationConfig = props.destination.bind(this, { deliveryStream: this });
+
+    const resource = new CfnDeliveryStream(this, 'Resource', {
+      deliveryStreamEncryptionConfigurationInput: encryptionConfig,
+      deliveryStreamName: props.deliveryStreamName,
+      deliveryStreamType: props.sourceStream ? 'KinesisStreamAsSource' : 'DirectPut',
+      kinesisStreamSourceConfiguration: streamSourceConfig,
       ...destinationConfig.properties,
     });
-    this.deliveryStream.node.addDependency(this.role);
+    resource.node.addDependency(this.grantPrincipal);
 
-    this.deliveryStreamArn = this.getResourceArnAttribute(this.deliveryStream.attrArn, {
+    this.deliveryStreamArn = this.getResourceArnAttribute(resource.attrArn, {
       service: 'kinesis',
       resource: 'deliverystream',
       resourceName: this.physicalName,
     });
-    this.deliveryStreamName = this.getResourceNameAttribute(this.deliveryStream.ref);
+    this.deliveryStreamName = this.getResourceNameAttribute(resource.ref);
   }
+}
+
+function setConnections(scope: Construct) {
+  const region = Stack.of(scope).region;
+  let cidrBlock = RegionInfo.get(region).firehoseCidrBlock;
+  if (!cidrBlock) {
+    const mapping: {[region: string]: { FirehoseCidrBlock: string }} = {};
+    RegionInfo.regions.forEach((regionInfo) => {
+      if (regionInfo.firehoseCidrBlock) {
+        mapping[regionInfo.name] = {
+          FirehoseCidrBlock: regionInfo.firehoseCidrBlock,
+        };
+      }
+    });
+    const cfnMapping = new CfnMapping(scope, 'Firehose CIDR Mapping', {
+      mapping,
+    });
+    cidrBlock = Fn.findInMap(cfnMapping.logicalId, region, 'FirehoseCidrBlock');
+    // TODO: this fails deployment if the region isn't configured, is that acceptable?
+  }
+
+  return new ec2.Connections({
+    peer: ec2.Peer.ipv4(cidrBlock),
+  });
 }
