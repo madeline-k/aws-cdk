@@ -268,10 +268,7 @@ export class RedshiftDestination extends DestinationBase {
     const intermediateS3Config: CfnDeliveryStream.S3DestinationConfigurationProperty = {
       bucketArn: intermediateBucket.bucketArn,
       roleArn: (deliveryStream.grantPrincipal as iam.Role).roleArn,
-      bufferingHints: {
-        intervalInSeconds: this.redshiftProps.bufferingInterval?.toSeconds(),
-        sizeInMBs: this.redshiftProps.bufferingSize?.toMebibytes(),
-      },
+      bufferingHints: this.createBufferingHints(this.redshiftProps.bufferingInterval, this.redshiftProps.bufferingSize),
       cloudWatchLoggingOptions: this.createLoggingOptions(scope, deliveryStream, 'IntermediateS3'),
       compressionFormat: compression ?? Compression.UNCOMPRESSED,
     };
