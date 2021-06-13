@@ -1,5 +1,5 @@
-import * as firehose from '@aws-cdk/aws-kinesisfirehose';
 import * as iam from '@aws-cdk/aws-iam';
+import * as firehose from '@aws-cdk/aws-kinesisfirehose';
 import * as kms from '@aws-cdk/aws-kms';
 import * as s3 from '@aws-cdk/aws-s3';
 import { Duration, Size } from '@aws-cdk/core';
