@@ -36,4 +36,4 @@ new DeliveryStream(this, 'Delivery Stream', {
 });
 ```
 
-See [aws-kinesisfirehose-destinations](../aws-kinesisfirehose-destinations) for various destinations.
+See [@aws-cdk/aws-kinesisfirehose-destinations](../aws-kinesisfirehose-destinations) for various destinations (implementations of `IDestination`).

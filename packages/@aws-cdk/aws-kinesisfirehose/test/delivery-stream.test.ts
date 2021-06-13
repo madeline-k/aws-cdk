@@ -316,6 +316,23 @@ describe('delivery stream', () => {
     });
   });
 
+  test('can add tags', () => {
+    const deliveryStream = new firehose.DeliveryStream(stack, 'Delivery Stream', {
+      destination: mockS3Destination,
+    });
+
+    cdk.Tags.of(deliveryStream).add('tagKey', 'tagValue');
+
+    expect(stack).toHaveResource('AWS::KinesisFirehose::DeliveryStream', {
+      Tags: [
+        {
+          Key: 'tagKey',
+          Value: 'tagValue',
+        },
+      ],
+    });
+  });
+
   test('can import delivery stream from name', () => {
     const deliveryStream = firehose.DeliveryStream.fromDeliveryStreamName(stack, 'DeliveryStream', 'mydeliverystream');
 

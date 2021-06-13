@@ -184,7 +184,7 @@ export class RedshiftDestination extends DestinationBase {
 
   private createRedshiftConfig(scope: Construct, deliveryStream: IDeliveryStream): CfnDeliveryStream.RedshiftDestinationConfigurationProperty {
     const cluster = this.redshiftProps.cluster;
-    // TODO: assert cluster subnet is public
+    // TODO: assert cluster subnet is public and cluster is publicly accessible
     const endpoint = cluster.clusterEndpoint;
     const jdbcUrl = `jdbc:redshift://${endpoint.hostname}:${Token.asString(endpoint.port)}/${this.redshiftProps.database}`;
     cluster.connections.allowDefaultPortFrom(deliveryStream, 'Allow incoming connections from Kinesis Data Firehose');

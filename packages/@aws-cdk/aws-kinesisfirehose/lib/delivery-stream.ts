@@ -3,7 +3,7 @@ import * as ec2 from '@aws-cdk/aws-ec2';
 import * as iam from '@aws-cdk/aws-iam';
 import * as kinesis from '@aws-cdk/aws-kinesis';
 import * as kms from '@aws-cdk/aws-kms';
-import { CfnMapping, Fn, IResource, Resource, Stack } from '@aws-cdk/core';
+import { CfnMapping, Fn, IResource, ITaggable, Resource, Stack, TagManager, TagType } from '@aws-cdk/core';
 import { RegionInfo } from '@aws-cdk/region-info';
 import { Construct } from 'constructs';
 import { IDestination } from './destination';
@@ -12,7 +12,7 @@ import { CfnDeliveryStream } from './kinesisfirehose.generated';
 /**
  * Represents a Kinesis Data Firehose delivery stream.
  */
-export interface IDeliveryStream extends IResource, iam.IGrantable, ec2.IConnectable {
+export interface IDeliveryStream extends IResource, iam.IGrantable, ec2.IConnectable, ITaggable {
   /**
    * The ARN of the delivery stream.
    *
@@ -28,12 +28,12 @@ export interface IDeliveryStream extends IResource, iam.IGrantable, ec2.IConnect
   readonly deliveryStreamName: string;
 
   /**
-   * Grant the given identity permissions to perform the given actions.
+   * Grant the `grantee` identity permissions to perform `actions`.
    */
   grant(grantee: iam.IGrantable, ...actions: string[]): iam.Grant;
 
   /**
-   * Grant the given identity permissions to write data to this stream.
+   * Grant the `grantee` identity permissions to write data to this stream.
    */
   grantWrite(grantee: iam.IGrantable): iam.Grant;
 
@@ -55,6 +55,8 @@ export abstract class DeliveryStreamBase extends Resource implements IDeliverySt
   abstract readonly grantPrincipal: iam.IPrincipal;
 
   public readonly connections: ec2.Connections;
+
+  public readonly tags = new TagManager(TagType.STANDARD, 'AWS::KinesisFirehose::DeliveryStream');
 
   constructor(scope: Construct, id: string) {
     super(scope, id);
@@ -162,8 +164,6 @@ export interface DeliveryStreamProps {
    * @default - if `encryption` is set to `CUSTOMER_MANAGED`, a KMS key will be created for you.
    */
   readonly encryptionKey?: kms.IKey;
-
-  // TODO: tags?
 }
 
 /**
