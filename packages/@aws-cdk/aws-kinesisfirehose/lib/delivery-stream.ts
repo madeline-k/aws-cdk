@@ -166,6 +166,30 @@ export interface DeliveryStreamProps {
   // TODO: tags?
 }
 
+export interface DeliveryStreamAttributes {
+  /**
+   * The ARN of the delivery stream.
+   *
+   * At least one of deliveryStreamArn and deliveryStreamName must be provided.
+   */
+  readonly deliveryStreamArn?: string;
+
+  /**
+   * The name of the delivery stream
+   *
+   * At least one of deliveryStreamName and deliveryStreamArn  must be provided.
+   */
+  readonly deliveryStreamName?: string;
+
+
+  /**
+   * The IAM role associated with this delivery stream.
+   *
+   * Assumed by Kinesis Firehose to read from sources, invoke processors, and write to destinations.
+   */
+  readonly role?: iam.IRole;
+}
+
 /**
  * Create a Kinesis Data Firehose delivery stream
  *
@@ -176,36 +200,36 @@ export class DeliveryStream extends DeliveryStreamBase {
    * Import an existing delivery stream from its name.
    */
   static fromDeliveryStreamName(scope: Construct, id: string, deliveryStreamName: string): IDeliveryStream {
-    class Import extends DeliveryStreamBase {
-      public readonly deliveryStreamName = deliveryStreamName;
-      public readonly deliveryStreamArn = Stack.of(scope).formatArn({
-        service: 'firehose',
-        resource: 'deliverystream',
-        resourceName: deliveryStreamName,
-      })
-      public readonly grantPrincipal = new iam.UnknownPrincipal({ resource: this });
-    }
-    return new Import(scope, id);
+    return this.fromDeliveryStreamAttributes(scope, id, { deliveryStreamName });
   }
 
   /**
    * Import an existing delivery stream from its ARN.
    */
   static fromDeliveryStreamArn(scope: Construct, id: string, deliveryStreamArn: string): IDeliveryStream {
+    return this.fromDeliveryStreamAttributes(scope, id, { deliveryStreamArn });
+  }
+
+  /**
+   * Import an existing delivery stream from its attributes.
+   */
+  static fromDeliveryStreamAttributes(scope: Construct, id: string, attrs: DeliveryStreamAttributes): IDeliveryStream {
+    if (!attrs.deliveryStreamName && !attrs.deliveryStreamArn) {
+      throw new Error('Either deliveryStreamName or deliveryStreamArn must be provided in DeliveryStreamAttributes');
+    }
+    const deliveryStreamName = attrs.deliveryStreamName ?? Stack.of(scope).parseArn(attrs.deliveryStreamArn!).resourceName;
+    if (!deliveryStreamName) {
+      throw new Error(`Could not import delivery stream from malformatted ARN ${attrs.deliveryStreamArn}: could not determine resource name`);
+    }
+    const deliveryStreamArn = attrs.deliveryStreamArn ?? Stack.of(scope).formatArn({
+      service: 'firehose',
+      resource: 'deliverystream',
+      resourceName: attrs.deliveryStreamName,
+    });
     class Import extends DeliveryStreamBase {
-      public readonly deliveryStreamName: string;
+      public readonly deliveryStreamName = deliveryStreamName!;
       public readonly deliveryStreamArn = deliveryStreamArn;
-      public readonly grantPrincipal = new iam.UnknownPrincipal({ resource: this });
-
-      constructor(importScope: Construct, importId: string) {
-        super(importScope, importId);
-
-        const deliveryStreamName = Stack.of(this).parseArn(deliveryStreamArn).resourceName;
-        if (!deliveryStreamName) {
-          throw new Error('Malformatted ARN');
-        }
-        this.deliveryStreamName = deliveryStreamName;
-      }
+      public readonly grantPrincipal = attrs.role ?? new iam.UnknownPrincipal({ resource: this });
     }
     return new Import(scope, id);
   }
