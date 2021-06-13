@@ -3,7 +3,7 @@ import * as ec2 from '@aws-cdk/aws-ec2';
 import * as iam from '@aws-cdk/aws-iam';
 import * as kinesis from '@aws-cdk/aws-kinesis';
 import * as kms from '@aws-cdk/aws-kms';
-import { CfnMapping, Fn, IResource, ITaggable, Resource, Stack, TagManager, TagType } from '@aws-cdk/core';
+import * as cdk from '@aws-cdk/core';
 import { RegionInfo } from '@aws-cdk/region-info';
 import { Construct } from 'constructs';
 import { IDestination } from './destination';
@@ -12,7 +12,7 @@ import { CfnDeliveryStream } from './kinesisfirehose.generated';
 /**
  * Represents a Kinesis Data Firehose delivery stream.
  */
-export interface IDeliveryStream extends IResource, iam.IGrantable, ec2.IConnectable, ITaggable {
+export interface IDeliveryStream extends cdk.IResource, iam.IGrantable, ec2.IConnectable, cdk.ITaggable {
   /**
    * The ARN of the delivery stream.
    *
@@ -46,7 +46,7 @@ export interface IDeliveryStream extends IResource, iam.IGrantable, ec2.IConnect
 /**
  * Base class for new and imported Kinesis Data Firehose delivery streams
  */
-export abstract class DeliveryStreamBase extends Resource implements IDeliveryStream {
+export abstract class DeliveryStreamBase extends cdk.Resource implements IDeliveryStream {
 
   abstract readonly deliveryStreamName: string;
 
@@ -56,7 +56,7 @@ export abstract class DeliveryStreamBase extends Resource implements IDeliverySt
 
   public readonly connections: ec2.Connections;
 
-  public readonly tags = new TagManager(TagType.STANDARD, 'AWS::KinesisFirehose::DeliveryStream');
+  public readonly tags = new cdk.TagManager(cdk.TagType.STANDARD, 'AWS::KinesisFirehose::DeliveryStream');
 
   constructor(scope: Construct, id: string) {
     super(scope, id);
@@ -226,11 +226,11 @@ export class DeliveryStream extends DeliveryStreamBase {
     if (!attrs.deliveryStreamName && !attrs.deliveryStreamArn) {
       throw new Error('Either deliveryStreamName or deliveryStreamArn must be provided in DeliveryStreamAttributes');
     }
-    const deliveryStreamName = attrs.deliveryStreamName ?? Stack.of(scope).parseArn(attrs.deliveryStreamArn!).resourceName;
+    const deliveryStreamName = attrs.deliveryStreamName ?? cdk.Stack.of(scope).parseArn(attrs.deliveryStreamArn!).resourceName;
     if (!deliveryStreamName) {
       throw new Error(`Could not import delivery stream from malformatted ARN ${attrs.deliveryStreamArn}: could not determine resource name`);
     }
-    const deliveryStreamArn = attrs.deliveryStreamArn ?? Stack.of(scope).formatArn({
+    const deliveryStreamArn = attrs.deliveryStreamArn ?? cdk.Stack.of(scope).formatArn({
       service: 'firehose',
       resource: 'deliverystream',
       resourceName: attrs.deliveryStreamName,
@@ -300,7 +300,7 @@ export class DeliveryStream extends DeliveryStreamBase {
 }
 
 function setConnections(scope: Construct) {
-  const region = Stack.of(scope).region;
+  const region = cdk.Stack.of(scope).region;
   let cidrBlock = RegionInfo.get(region).firehoseCidrBlock;
   if (!cidrBlock) {
     const mapping: {[region: string]: { FirehoseCidrBlock: string }} = {};
@@ -311,10 +311,10 @@ function setConnections(scope: Construct) {
         };
       }
     });
-    const cfnMapping = new CfnMapping(scope, 'Firehose CIDR Mapping', {
+    const cfnMapping = new cdk.CfnMapping(scope, 'Firehose CIDR Mapping', {
       mapping,
     });
-    cidrBlock = Fn.findInMap(cfnMapping.logicalId, region, 'FirehoseCidrBlock');
+    cidrBlock = cdk.Fn.findInMap(cfnMapping.logicalId, region, 'FirehoseCidrBlock');
     // TODO: this fails deployment if the region isn't configured, is that acceptable?
   }
 
