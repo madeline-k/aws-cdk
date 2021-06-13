@@ -1,5 +1,6 @@
 import '@aws-cdk/assert-internal/jest';
 import { ABSENT, arrayWith } from '@aws-cdk/assert-internal';
+import * as cloudwatch from '@aws-cdk/aws-cloudwatch';
 import * as ec2 from '@aws-cdk/aws-ec2';
 import * as iam from '@aws-cdk/aws-iam';
 import * as kinesis from '@aws-cdk/aws-kinesis';
@@ -252,22 +253,122 @@ describe('delivery stream', () => {
     });
   });
 
-  test('metric provides a Metric with configured properties', () => {
-    stack = new cdk.Stack(undefined, undefined, { env: { account: '111122223333', region: 'xx-west-1' } });
-    const deliveryStream = new firehose.DeliveryStream(stack, 'Delivery Stream', {
-      destination: mockS3Destination,
+  describe('metric methods provide a Metric with configured and attached properties', () => {
+    beforeEach(() => {
+      stack = new cdk.Stack(undefined, undefined, { env: { account: '111122223333', region: 'xx-west-1' } });
     });
 
-    const metric = deliveryStream.metric('IncomingRecords');
+    test('metric', () => {
+      const deliveryStream = new firehose.DeliveryStream(stack, 'Delivery Stream', {
+        destination: mockS3Destination,
+      });
 
-    expect(metric).toMatchObject({
-      account: stack.account,
-      region: stack.region,
-      namespace: 'AWS/Firehose',
-      metricName: 'IncomingRecords',
-      dimensions: {
-        DeliveryStreamName: deliveryStream.deliveryStreamName,
-      },
+      const metric = deliveryStream.metric('IncomingRecords');
+
+      expect(metric).toMatchObject({
+        account: stack.account,
+        region: stack.region,
+        namespace: 'AWS/Firehose',
+        metricName: 'IncomingRecords',
+        dimensions: {
+          DeliveryStreamName: deliveryStream.deliveryStreamName,
+        },
+      });
+    });
+
+    test('metricIncomingBytes', () => {
+      const deliveryStream = new firehose.DeliveryStream(stack, 'Delivery Stream', {
+        destination: mockS3Destination,
+      });
+
+      const metric = deliveryStream.metricIncomingBytes();
+
+      expect(metric).toMatchObject({
+        account: stack.account,
+        region: stack.region,
+        namespace: 'AWS/Firehose',
+        metricName: 'IncomingBytes',
+        statistic: cloudwatch.Statistic.AVERAGE,
+        dimensions: {
+          DeliveryStreamName: deliveryStream.deliveryStreamName,
+        },
+      });
+    });
+
+    test('metricIncomingRecords', () => {
+      const deliveryStream = new firehose.DeliveryStream(stack, 'Delivery Stream', {
+        destination: mockS3Destination,
+      });
+
+      const metric = deliveryStream.metricIncomingRecords();
+
+      expect(metric).toMatchObject({
+        account: stack.account,
+        region: stack.region,
+        namespace: 'AWS/Firehose',
+        metricName: 'IncomingRecords',
+        statistic: cloudwatch.Statistic.AVERAGE,
+        dimensions: {
+          DeliveryStreamName: deliveryStream.deliveryStreamName,
+        },
+      });
+    });
+
+    test('metricBackupToS3Bytes', () => {
+      const deliveryStream = new firehose.DeliveryStream(stack, 'Delivery Stream', {
+        destination: mockS3Destination,
+      });
+
+      const metric = deliveryStream.metricBackupToS3Bytes();
+
+      expect(metric).toMatchObject({
+        account: stack.account,
+        region: stack.region,
+        namespace: 'AWS/Firehose',
+        metricName: 'BackupToS3.Bytes',
+        statistic: cloudwatch.Statistic.AVERAGE,
+        dimensions: {
+          DeliveryStreamName: deliveryStream.deliveryStreamName,
+        },
+      });
+    });
+
+    test('metricBackupToS3DataFreshness', () => {
+      const deliveryStream = new firehose.DeliveryStream(stack, 'Delivery Stream', {
+        destination: mockS3Destination,
+      });
+
+      const metric = deliveryStream.metricBackupToS3DataFreshness();
+
+      expect(metric).toMatchObject({
+        account: stack.account,
+        region: stack.region,
+        namespace: 'AWS/Firehose',
+        metricName: 'BackupToS3.DataFreshness',
+        statistic: cloudwatch.Statistic.AVERAGE,
+        dimensions: {
+          DeliveryStreamName: deliveryStream.deliveryStreamName,
+        },
+      });
+    });
+
+    test('metricBackupToS3Records', () => {
+      const deliveryStream = new firehose.DeliveryStream(stack, 'Delivery Stream', {
+        destination: mockS3Destination,
+      });
+
+      const metric = deliveryStream.metricBackupToS3Records();
+
+      expect(metric).toMatchObject({
+        account: stack.account,
+        region: stack.region,
+        namespace: 'AWS/Firehose',
+        metricName: 'BackupToS3.Records',
+        statistic: cloudwatch.Statistic.AVERAGE,
+        dimensions: {
+          DeliveryStreamName: deliveryStream.deliveryStreamName,
+        },
+      });
     });
   });
 
@@ -333,60 +434,62 @@ describe('delivery stream', () => {
     });
   });
 
-  test('can import delivery stream from name', () => {
-    const deliveryStream = firehose.DeliveryStream.fromDeliveryStreamName(stack, 'DeliveryStream', 'mydeliverystream');
+  describe('importing', () => {
+    test('from name', () => {
+      const deliveryStream = firehose.DeliveryStream.fromDeliveryStreamName(stack, 'DeliveryStream', 'mydeliverystream');
 
-    expect(deliveryStream.deliveryStreamName).toBe('mydeliverystream');
-    expect(stack.resolve(deliveryStream.deliveryStreamArn)).toStrictEqual({
-      'Fn::Join': ['', ['arn:', stack.resolve(stack.partition), ':firehose:', stack.resolve(stack.region), ':', stack.resolve(stack.account), ':deliverystream/mydeliverystream']],
+      expect(deliveryStream.deliveryStreamName).toBe('mydeliverystream');
+      expect(stack.resolve(deliveryStream.deliveryStreamArn)).toStrictEqual({
+        'Fn::Join': ['', ['arn:', stack.resolve(stack.partition), ':firehose:', stack.resolve(stack.region), ':', stack.resolve(stack.account), ':deliverystream/mydeliverystream']],
+      });
+      expect(deliveryStream.grantPrincipal).toBeInstanceOf(iam.UnknownPrincipal);
     });
-    expect(deliveryStream.grantPrincipal).toBeInstanceOf(iam.UnknownPrincipal);
-  });
 
-  test('can import delivery stream from ARN', () => {
-    const deliveryStream = firehose.DeliveryStream.fromDeliveryStreamArn(stack, 'DeliveryStream', 'arn:aws:firehose:xx-west-1:111122223333:deliverystream/mydeliverystream');
+    test('from ARN', () => {
+      const deliveryStream = firehose.DeliveryStream.fromDeliveryStreamArn(stack, 'DeliveryStream', 'arn:aws:firehose:xx-west-1:111122223333:deliverystream/mydeliverystream');
 
-    expect(deliveryStream.deliveryStreamName).toBe('mydeliverystream');
-    expect(deliveryStream.deliveryStreamArn).toBe('arn:aws:firehose:xx-west-1:111122223333:deliverystream/mydeliverystream');
-    expect(deliveryStream.grantPrincipal).toBeInstanceOf(iam.UnknownPrincipal);
-  });
-
-  test('can import delivery stream from attributes (just name)', () => {
-    const deliveryStream = firehose.DeliveryStream.fromDeliveryStreamAttributes(stack, 'DeliveryStream', { deliveryStreamName: 'mydeliverystream' });
-
-    expect(deliveryStream.deliveryStreamName).toBe('mydeliverystream');
-    expect(stack.resolve(deliveryStream.deliveryStreamArn)).toStrictEqual({
-      'Fn::Join': ['', ['arn:', stack.resolve(stack.partition), ':firehose:', stack.resolve(stack.region), ':', stack.resolve(stack.account), ':deliverystream/mydeliverystream']],
+      expect(deliveryStream.deliveryStreamName).toBe('mydeliverystream');
+      expect(deliveryStream.deliveryStreamArn).toBe('arn:aws:firehose:xx-west-1:111122223333:deliverystream/mydeliverystream');
+      expect(deliveryStream.grantPrincipal).toBeInstanceOf(iam.UnknownPrincipal);
     });
-    expect(deliveryStream.grantPrincipal).toBeInstanceOf(iam.UnknownPrincipal);
-  });
 
-  test('can import delivery stream from attributes (just ARN)', () => {
-    const deliveryStream = firehose.DeliveryStream.fromDeliveryStreamAttributes(stack, 'DeliveryStream', { deliveryStreamArn: 'arn:aws:firehose:xx-west-1:111122223333:deliverystream/mydeliverystream' });
+    test('from attributes (just name)', () => {
+      const deliveryStream = firehose.DeliveryStream.fromDeliveryStreamAttributes(stack, 'DeliveryStream', { deliveryStreamName: 'mydeliverystream' });
 
-    expect(deliveryStream.deliveryStreamName).toBe('mydeliverystream');
-    expect(deliveryStream.deliveryStreamArn).toBe('arn:aws:firehose:xx-west-1:111122223333:deliverystream/mydeliverystream');
-    expect(deliveryStream.grantPrincipal).toBeInstanceOf(iam.UnknownPrincipal);
-  });
-
-  test('can import delivery stream from attributes (with role)', () => {
-    const role = iam.Role.fromRoleArn(stack, 'Delivery Stream Role', 'arn:aws:iam::111122223333:role/DeliveryStreamRole');
-    const deliveryStream = firehose.DeliveryStream.fromDeliveryStreamAttributes(stack, 'DeliveryStream', { deliveryStreamName: 'mydeliverystream', role });
-
-    expect(deliveryStream.deliveryStreamName).toBe('mydeliverystream');
-    expect(stack.resolve(deliveryStream.deliveryStreamArn)).toStrictEqual({
-      'Fn::Join': ['', ['arn:', stack.resolve(stack.partition), ':firehose:', stack.resolve(stack.region), ':', stack.resolve(stack.account), ':deliverystream/mydeliverystream']],
+      expect(deliveryStream.deliveryStreamName).toBe('mydeliverystream');
+      expect(stack.resolve(deliveryStream.deliveryStreamArn)).toStrictEqual({
+        'Fn::Join': ['', ['arn:', stack.resolve(stack.partition), ':firehose:', stack.resolve(stack.region), ':', stack.resolve(stack.account), ':deliverystream/mydeliverystream']],
+      });
+      expect(deliveryStream.grantPrincipal).toBeInstanceOf(iam.UnknownPrincipal);
     });
-    expect(deliveryStream.grantPrincipal).toBe(role);
-  });
 
-  test('throws when importing from malformatted ARN', () => {
-    expect(() => firehose.DeliveryStream.fromDeliveryStreamAttributes(stack, 'DeliveryStream', { deliveryStreamArn: 'arn:aws:firehose:xx-west-1:111122223333:deliverystream/' }))
-      .toThrowError(/Could not import delivery stream from malformatted ARN/);
-  });
+    test('from attributes (just ARN)', () => {
+      const deliveryStream = firehose.DeliveryStream.fromDeliveryStreamAttributes(stack, 'DeliveryStream', { deliveryStreamArn: 'arn:aws:firehose:xx-west-1:111122223333:deliverystream/mydeliverystream' });
 
-  test('throws when importing without name or ARN', () => {
-    expect(() => firehose.DeliveryStream.fromDeliveryStreamAttributes(stack, 'DeliveryStream', {}))
-      .toThrowError('Either deliveryStreamName or deliveryStreamArn must be provided in DeliveryStreamAttributes');
+      expect(deliveryStream.deliveryStreamName).toBe('mydeliverystream');
+      expect(deliveryStream.deliveryStreamArn).toBe('arn:aws:firehose:xx-west-1:111122223333:deliverystream/mydeliverystream');
+      expect(deliveryStream.grantPrincipal).toBeInstanceOf(iam.UnknownPrincipal);
+    });
+
+    test('from attributes (with role)', () => {
+      const role = iam.Role.fromRoleArn(stack, 'Delivery Stream Role', 'arn:aws:iam::111122223333:role/DeliveryStreamRole');
+      const deliveryStream = firehose.DeliveryStream.fromDeliveryStreamAttributes(stack, 'DeliveryStream', { deliveryStreamName: 'mydeliverystream', role });
+
+      expect(deliveryStream.deliveryStreamName).toBe('mydeliverystream');
+      expect(stack.resolve(deliveryStream.deliveryStreamArn)).toStrictEqual({
+        'Fn::Join': ['', ['arn:', stack.resolve(stack.partition), ':firehose:', stack.resolve(stack.region), ':', stack.resolve(stack.account), ':deliverystream/mydeliverystream']],
+      });
+      expect(deliveryStream.grantPrincipal).toBe(role);
+    });
+
+    test('throws when malformatted ARN', () => {
+      expect(() => firehose.DeliveryStream.fromDeliveryStreamAttributes(stack, 'DeliveryStream', { deliveryStreamArn: 'arn:aws:firehose:xx-west-1:111122223333:deliverystream/' }))
+        .toThrowError(/Could not import delivery stream from malformatted ARN/);
+    });
+
+    test('throws when without name or ARN', () => {
+      expect(() => firehose.DeliveryStream.fromDeliveryStreamAttributes(stack, 'DeliveryStream', {}))
+        .toThrowError('Either deliveryStreamName or deliveryStreamArn must be provided in DeliveryStreamAttributes');
+    });
   });
 });

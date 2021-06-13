@@ -7,6 +7,7 @@ import * as cdk from '@aws-cdk/core';
 import { RegionInfo } from '@aws-cdk/region-info';
 import { Construct } from 'constructs';
 import { IDestination } from './destination';
+import { FirehoseMetrics } from './kinesisfirehose-canned-metrics.generated';
 import { CfnDeliveryStream } from './kinesisfirehose.generated';
 
 /**
@@ -41,6 +42,33 @@ export interface IDeliveryStream extends cdk.IResource, iam.IGrantable, ec2.ICon
    * Return the given named metric for this delivery stream
    */
   metric(metricName: string, props?: cloudwatch.MetricOptions): cloudwatch.Metric;
+
+  /**
+   * Metric for the number of bytes ingested successfully into the delivery stream over the specified time period after throttling.
+   */
+  metricIncomingBytes(props?: cloudwatch.MetricOptions): cloudwatch.Metric;
+
+  /**
+   * Metric for the number of records ingested successfully into the delivery stream over the specified time period after throttling.
+   */
+  metricIncomingRecords(props?: cloudwatch.MetricOptions): cloudwatch.Metric;
+
+  /**
+   * Metric for the number of bytes delivered to Amazon S3 for backup over the specified time period.
+   */
+  metricBackupToS3Bytes(props?: cloudwatch.MetricOptions): cloudwatch.Metric;
+
+  /**
+   * Metric for the age (from getting into Kinesis Data Firehose to now) of the oldest record in Kinesis Data Firehose.
+   *
+   * Any record older than this age has been delivered to the Amazon S3 bucket for backup.
+   */
+  metricBackupToS3DataFreshness(props?: cloudwatch.MetricOptions): cloudwatch.Metric;
+
+  /**
+   * Metric for the number of records delivered to Amazon S3 for backup over the specified time period.
+   */
+  metricBackupToS3Records(props?: cloudwatch.MetricOptions): cloudwatch.Metric;
 }
 
 /**
@@ -76,7 +104,6 @@ export abstract class DeliveryStreamBase extends cdk.Resource implements IDelive
     return this.grant(grantee, 'firehose:PutRecord', 'firehose:PutRecordBatch');
   }
 
-  // TODO: use canned metrics
   public metric(metricName: string, props?: cloudwatch.MetricOptions): cloudwatch.Metric {
     return new cloudwatch.Metric({
       namespace: 'AWS/Firehose',
@@ -84,6 +111,48 @@ export abstract class DeliveryStreamBase extends cdk.Resource implements IDelive
       dimensions: {
         DeliveryStreamName: this.deliveryStreamName,
       },
+      ...props,
+    }).attachTo(this);
+  }
+
+  /**
+   * By default, this metric will be calculated as an average over a period of 5 minutes.
+   */
+  public metricIncomingBytes(props?: cloudwatch.MetricOptions): cloudwatch.Metric {
+    return this.cannedMetric(FirehoseMetrics.incomingBytesAverage, props);
+  }
+
+  /**
+   * By default, this metric will be calculated as an average over a period of 5 minutes.
+   */
+  public metricIncomingRecords(props?: cloudwatch.MetricOptions): cloudwatch.Metric {
+    return this.cannedMetric(FirehoseMetrics.incomingRecordsAverage, props);
+  }
+
+  /**
+   * By default, this metric will be calculated as an average over a period of 5 minutes.
+   */
+  public metricBackupToS3Bytes(props?: cloudwatch.MetricOptions): cloudwatch.Metric {
+    return this.cannedMetric(FirehoseMetrics.backupToS3BytesAverage, props);
+  }
+
+  /**
+   * By default, this metric will be calculated as an average over a period of 5 minutes.
+   */
+  public metricBackupToS3DataFreshness(props?: cloudwatch.MetricOptions): cloudwatch.Metric {
+    return this.cannedMetric(FirehoseMetrics.backupToS3DataFreshnessAverage, props);
+  }
+
+  /**
+   * By default, this metric will be calculated as an average over a period of 5 minutes.
+   */
+  public metricBackupToS3Records(props?: cloudwatch.MetricOptions): cloudwatch.Metric {
+    return this.cannedMetric(FirehoseMetrics.backupToS3RecordsAverage, props);
+  }
+
+  private cannedMetric(fn: (dims: { DeliveryStreamName: string }) => cloudwatch.MetricProps, props?: cloudwatch.MetricOptions): cloudwatch.Metric {
+    return new cloudwatch.Metric({
+      ...fn({ DeliveryStreamName: this.deliveryStreamName }),
       ...props,
     }).attachTo(this);
   }
