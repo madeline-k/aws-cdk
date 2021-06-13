@@ -190,7 +190,7 @@ export interface DestinationProps {
 export abstract class DestinationBase implements IDestination {
   private logGroup?: logs.ILogGroup;
 
-  constructor(protected readonly props: DestinationProps) {}
+  constructor(protected readonly props: DestinationProps = {}) {}
 
   abstract bind(scope: Construct, options: DestinationBindOptions): DestinationConfig;
 
@@ -199,10 +199,13 @@ export abstract class DestinationBase implements IDestination {
     deliveryStream: IDeliveryStream,
     streamId: string,
   ): CfnDeliveryStream.CloudWatchLoggingOptionsProperty | undefined {
+    if (this.props.logging === false && this.props.logGroup) {
+      throw new Error('Destination logging cannot be set to false when logGroup is provided');
+    }
     if (this.props.logging !== false || this.props.logGroup) {
       this.logGroup = this.logGroup ?? this.props.logGroup ?? (!this.props.logStream ? new logs.LogGroup(scope, 'Log Group') : undefined);
       if (!this.logGroup) {
-        throw new Error('Log stream was provided to Destination but log group was not');
+        throw new Error('Log group must be provided to Destination if log stream is provided');
       }
       this.logGroup.grantWrite(deliveryStream); // TODO: too permissive? add a new grant on the stream resource if it's passed in?
       const logStream = this.props.logStream ?? this.logGroup.addStream(streamId);
@@ -217,6 +220,9 @@ export abstract class DestinationBase implements IDestination {
 
   protected createProcessingConfig(deliveryStream: IDeliveryStream): CfnDeliveryStream.ProcessingConfigurationProperty | undefined {
     // TODO: this seems (by the UI) to only allow a single transformation but seems to accept an array?
+    if (this.props.processors && this.props.processors.length > 1) {
+      throw new Error('Only one processor is allowed per delivery stream destination');
+    }
     if (this.props.processors && this.props.processors.length > 0) {
       const processors = this.props.processors.map((processor) => {
         processor.lambdaFunction.grantInvoke(deliveryStream);
@@ -247,7 +253,10 @@ export abstract class DestinationBase implements IDestination {
   }
 
   protected createBackupConfig(scope: Construct, deliveryStream: IDeliveryStream): CfnDeliveryStream.S3DestinationConfigurationProperty | undefined {
-    if (this.props.backup || this.props.backupBucket) {
+    if (this.props.backup === BackupMode.DISABLED && this.props.backupBucket) {
+      throw new Error('Destination backup cannot be set to DISABLED when backupBucket is provided');
+    }
+    if ((this.props.backup !== undefined && this.props.backup !== BackupMode.DISABLED) || this.props.backupBucket) {
       const bucket = this.props.backupBucket ?? new s3.Bucket(scope, 'Backup Bucket');
       return {
         bucketArn: bucket.bucketArn,

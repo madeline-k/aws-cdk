@@ -254,6 +254,9 @@ export class DeliveryStream extends DeliveryStreamBase {
     bucket.grantReadWrite(this);
     */
 
+    if ((props.encryption === StreamEncryption.AWS_OWNED || props.encryption === StreamEncryption.UNENCRYPTED) && props.encryptionKey) {
+      throw new Error(`Specified stream encryption as ${props.encryption} but provided a customer-managed key`);
+    }
     const encryptionKey = props.encryptionKey ?? (props.encryption === StreamEncryption.CUSTOMER_MANAGED ? new kms.Key(this, 'Key') : undefined);
     const encryptionConfig = (encryptionKey || (props.encryption === StreamEncryption.AWS_OWNED)) ? {
       keyArn: encryptionKey?.keyArn,
@@ -263,7 +266,7 @@ export class DeliveryStream extends DeliveryStreamBase {
 
     props.sourceStream?.grantRead(role); // TODO: may need to be DescribeStream instead of DescribeStreamSummary
     const streamSourceConfig = props.sourceStream ? {
-      kinesisStreamArn: props.sourceStream?.streamArn,
+      kinesisStreamArn: props.sourceStream.streamArn,
       roleArn: role.roleArn,
     } : undefined;
 
