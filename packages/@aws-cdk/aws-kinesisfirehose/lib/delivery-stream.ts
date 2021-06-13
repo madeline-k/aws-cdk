@@ -166,11 +166,16 @@ export interface DeliveryStreamProps {
   // TODO: tags?
 }
 
+/**
+ * A full specification of a delivery stream that can be used to import it fluently into the CDK application.
+ */
 export interface DeliveryStreamAttributes {
   /**
    * The ARN of the delivery stream.
    *
    * At least one of deliveryStreamArn and deliveryStreamName must be provided.
+   *
+   * @default - derived from `deliveryStreamName`.
    */
   readonly deliveryStreamArn?: string;
 
@@ -178,6 +183,8 @@ export interface DeliveryStreamAttributes {
    * The name of the delivery stream
    *
    * At least one of deliveryStreamName and deliveryStreamArn  must be provided.
+   *
+   * @default - derived from `deliveryStreamArn`.
    */
   readonly deliveryStreamName?: string;
 
@@ -186,6 +193,8 @@ export interface DeliveryStreamAttributes {
    * The IAM role associated with this delivery stream.
    *
    * Assumed by Kinesis Firehose to read from sources, invoke processors, and write to destinations.
+   *
+   * @default - the imported stream cannot be granted access to other resources as an `iam.IGrantable`.
    */
   readonly role?: iam.IRole;
 }
