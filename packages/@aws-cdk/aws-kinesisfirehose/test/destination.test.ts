@@ -10,11 +10,11 @@ import * as firehose from '../lib';
 describe('destination', () => {
   let stack: cdk.Stack;
   let deliveryStreamRole: iam.IRole;
-  let deliveryStream: firehose.IDeliveryStream
+  let deliveryStream: firehose.IDeliveryStream;
 
   beforeEach(() => {
     stack = new cdk.Stack();
-    deliveryStreamRole = iam.Role.fromRoleArn(stack, 'Delivery Stream Role', 'arn:aws:iam::111122223333:role/DeliveryStreamRole')
+    deliveryStreamRole = iam.Role.fromRoleArn(stack, 'Delivery Stream Role', 'arn:aws:iam::111122223333:role/DeliveryStreamRole');
     deliveryStream = firehose.DeliveryStream.fromDeliveryStreamAttributes(stack, 'Delivery Stream', {
       deliveryStreamName: 'mydeliverystream',
       role: deliveryStreamRole,
@@ -349,7 +349,9 @@ describe('destination', () => {
     });
 
     test('creates configuration if a processor is specified with optional parameters', () => {
-      const testDestination = new ProcessingDestination({ processors: [{ lambdaFunction, bufferInterval: cdk.Duration.minutes(1), bufferSize: cdk.Size.kibibytes(1024), retries: 1 }] });
+      const testDestination = new ProcessingDestination({
+        processors: [{ lambdaFunction, bufferInterval: cdk.Duration.minutes(1), bufferSize: cdk.Size.kibibytes(1024), retries: 1 }],
+      });
 
       const testDestinationConfig = testDestination.bind(stack, { deliveryStream });
 
@@ -430,7 +432,7 @@ describe('destination', () => {
     });
 
     test('creates configuration when properties provided', () => {
-      const testDestination = new BufferingDestination({ bufferingInterval: cdk.Duration.minutes(1), bufferingSize: cdk.Size.kibibytes(1024), });
+      const testDestination = new BufferingDestination({ bufferingInterval: cdk.Duration.minutes(1), bufferingSize: cdk.Size.kibibytes(1024) });
 
       const testDestinationConfig = testDestination.bind(stack, { deliveryStream });
 

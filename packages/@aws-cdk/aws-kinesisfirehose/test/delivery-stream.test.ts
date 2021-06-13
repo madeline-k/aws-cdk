@@ -104,7 +104,7 @@ describe('delivery stream', () => {
           },
         ],
       },
-      Roles: [ stack.resolve(role.roleName) ],
+      Roles: [stack.resolve(role.roleName)],
     });
     expect(stack).toHaveResource('AWS::KinesisFirehose::DeliveryStream', {
       DeliveryStreamType: 'KinesisStreamAsSource',
@@ -222,7 +222,7 @@ describe('delivery stream', () => {
           },
         ],
       },
-      Roles: [ stack.resolve(role.roleName) ],
+      Roles: [stack.resolve(role.roleName)],
     });
   });
 
@@ -248,7 +248,7 @@ describe('delivery stream', () => {
           },
         ],
       },
-      Roles: [ stack.resolve(role.roleName) ],
+      Roles: [stack.resolve(role.roleName)],
     });
   });
 
@@ -287,10 +287,10 @@ describe('delivery stream', () => {
             'Fn::FindInMap': [
               'DeliveryStreamFirehoseCIDRMappingE9233479',
               {
-                Ref: 'AWS::Region'
+                Ref: 'AWS::Region',
               },
-              'FirehoseCidrBlock'
-            ]
+              'FirehoseCidrBlock',
+            ],
           },
         },
       ],
@@ -321,7 +321,7 @@ describe('delivery stream', () => {
 
     expect(deliveryStream.deliveryStreamName).toBe('mydeliverystream');
     expect(stack.resolve(deliveryStream.deliveryStreamArn)).toStrictEqual({
-      'Fn::Join': ['', ['arn:', stack.resolve(stack.partition), ':firehose:', stack.resolve(stack.region), ':', stack.resolve(stack.account), ':deliverystream/mydeliverystream']]
+      'Fn::Join': ['', ['arn:', stack.resolve(stack.partition), ':firehose:', stack.resolve(stack.region), ':', stack.resolve(stack.account), ':deliverystream/mydeliverystream']],
     });
     expect(deliveryStream.grantPrincipal).toBeInstanceOf(iam.UnknownPrincipal);
   });
@@ -339,7 +339,7 @@ describe('delivery stream', () => {
 
     expect(deliveryStream.deliveryStreamName).toBe('mydeliverystream');
     expect(stack.resolve(deliveryStream.deliveryStreamArn)).toStrictEqual({
-      'Fn::Join': ['', ['arn:', stack.resolve(stack.partition), ':firehose:', stack.resolve(stack.region), ':', stack.resolve(stack.account), ':deliverystream/mydeliverystream']]
+      'Fn::Join': ['', ['arn:', stack.resolve(stack.partition), ':firehose:', stack.resolve(stack.region), ':', stack.resolve(stack.account), ':deliverystream/mydeliverystream']],
     });
     expect(deliveryStream.grantPrincipal).toBeInstanceOf(iam.UnknownPrincipal);
   });
@@ -358,7 +358,7 @@ describe('delivery stream', () => {
 
     expect(deliveryStream.deliveryStreamName).toBe('mydeliverystream');
     expect(stack.resolve(deliveryStream.deliveryStreamArn)).toStrictEqual({
-      'Fn::Join': ['', ['arn:', stack.resolve(stack.partition), ':firehose:', stack.resolve(stack.region), ':', stack.resolve(stack.account), ':deliverystream/mydeliverystream']]
+      'Fn::Join': ['', ['arn:', stack.resolve(stack.partition), ':firehose:', stack.resolve(stack.region), ':', stack.resolve(stack.account), ':deliverystream/mydeliverystream']],
     });
     expect(deliveryStream.grantPrincipal).toBe(role);
   });

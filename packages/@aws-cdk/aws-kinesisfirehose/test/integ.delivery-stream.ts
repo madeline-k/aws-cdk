@@ -2,6 +2,7 @@
 import * as iam from '@aws-cdk/aws-iam';
 import * as s3 from '@aws-cdk/aws-s3';
 import * as cdk from '@aws-cdk/core';
+import * as constructs from 'constructs';
 import * as firehose from '../lib';
 
 const app = new cdk.App();
@@ -17,7 +18,7 @@ const role = new iam.Role(stack, 'Role', {
 });
 
 const mockS3Destination: firehose.IDestination = {
-  bind(_scope: cdk.Construct, _options: firehose.DestinationBindOptions): firehose.DestinationConfig {
+  bind(_scope: constructs.Construct, _options: firehose.DestinationBindOptions): firehose.DestinationConfig {
     return {
       properties: {
         s3DestinationConfiguration: {
