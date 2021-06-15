@@ -12,6 +12,11 @@ export interface IClusterSubnetGroup extends IResource {
    * @attribute
    */
   readonly clusterSubnetGroupName: string;
+
+  /**
+   * The subnets in this group.
+   */
+  readonly selectedSubnets?: ec2.SelectedSubnets;
 }
 
 /**
@@ -57,19 +62,22 @@ export class ClusterSubnetGroup extends Resource implements IClusterSubnetGroup 
   public static fromClusterSubnetGroupName(scope: Construct, id: string, clusterSubnetGroupName: string): IClusterSubnetGroup {
     return new class extends Resource implements IClusterSubnetGroup {
       public readonly clusterSubnetGroupName = clusterSubnetGroupName;
+      // TODO: allow this to be provided via from...Attributes
+      public readonly selectedSubnets = undefined;
     }(scope, id);
   }
 
   public readonly clusterSubnetGroupName: string;
+  public readonly selectedSubnets?: ec2.SelectedSubnets;
 
   constructor(scope: Construct, id: string, props: ClusterSubnetGroupProps) {
     super(scope, id);
 
-    const { subnetIds } = props.vpc.selectSubnets(props.vpcSubnets ?? { subnetType: ec2.SubnetType.PRIVATE });
+    this.selectedSubnets = props.vpc.selectSubnets(props.vpcSubnets ?? { subnetType: ec2.SubnetType.PRIVATE });
 
     const subnetGroup = new CfnClusterSubnetGroup(this, 'Default', {
       description: props.description,
-      subnetIds,
+      subnetIds: this.selectedSubnets.subnetIds,
     });
     subnetGroup.applyRemovalPolicy(props.removalPolicy ?? RemovalPolicy.RETAIN, {
       applyToUpdateReplacePolicy: true,

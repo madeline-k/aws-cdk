@@ -424,9 +424,7 @@ describe('destination', () => {
 
       expect(stack.resolve(testDestinationConfig)).toStrictEqual({
         properties: {
-          testDestinationConfig: {
-            bufferingConfig: {},
-          },
+          testDestinationConfig: {},
         },
       });
     });
@@ -446,6 +444,14 @@ describe('destination', () => {
           },
         },
       });
+    });
+
+    test('validates bufferingInterval', () => {
+      // valid values [60, 900] seconds
+    });
+
+    test('validates bufferingSize', () => {
+      // valid values [1, 128] MBs
     });
   });
 });

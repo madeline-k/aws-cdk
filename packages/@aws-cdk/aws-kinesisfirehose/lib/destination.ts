@@ -267,7 +267,10 @@ export abstract class DestinationBase implements IDestination {
     return undefined;
   }
 
-  protected createBufferingHints(bufferingInterval?: Duration, bufferingSize?: Size): CfnDeliveryStream.BufferingHintsProperty {
+  protected createBufferingHints(bufferingInterval?: Duration, bufferingSize?: Size): CfnDeliveryStream.BufferingHintsProperty | undefined {
+    if (!bufferingInterval && !bufferingSize) {
+      return undefined;
+    }
     return {
       intervalInSeconds: bufferingInterval?.toSeconds(),
       sizeInMBs: bufferingSize?.toMebibytes(),

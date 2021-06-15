@@ -149,6 +149,16 @@ export interface ICluster extends IResource, ec2.IConnectable, secretsmanager.IS
    * @attribute EndpointAddress,EndpointPort
    */
   readonly clusterEndpoint: Endpoint;
+
+  /**
+   * Whether the cluster can be accessed from a public network.
+   */
+  readonly publiclyAccessible: boolean;
+
+  /**
+   * TODO
+   */
+  readonly subnetGroup?: IClusterSubnetGroup;
 }
 
 /**
@@ -177,6 +187,19 @@ export interface ClusterAttributes {
    */
   readonly clusterEndpointPort: number;
 
+  /**
+   * Whether the cluster can be accessed from a public network.
+   *
+   * @default false
+   */
+  readonly publiclyAccessible?: boolean;
+
+  /**
+   * The cluster subnet group used by this cluster.
+   *
+   * @default - subnet group is unknown
+   */
+  readonly subnetGroup?: IClusterSubnetGroup;
 }
 
 /**
@@ -352,6 +375,10 @@ abstract class ClusterBase extends Resource implements ICluster {
    */
   public abstract readonly connections: ec2.Connections;
 
+  public abstract readonly publiclyAccessible: boolean;
+
+  public abstract readonly subnetGroup?: IClusterSubnetGroup;
+
   /**
    * Renders the secret attachment target specifications.
    */
@@ -387,6 +414,8 @@ export class Cluster extends ClusterBase {
       });
       public readonly instanceIdentifiers: string[] = [];
       public readonly clusterEndpoint = new Endpoint(attrs.clusterEndpointAddress, attrs.clusterEndpointPort);
+      public readonly publiclyAccessible = attrs.publiclyAccessible ?? false;
+      public readonly subnetGroup = attrs.subnetGroup;
     }
 
     return new Import(scope, id);
@@ -403,6 +432,10 @@ export class Cluster extends ClusterBase {
    * The endpoint to use for read/write operations
    */
   public readonly clusterEndpoint: Endpoint;
+
+  public readonly publiclyAccessible: boolean;
+
+  public readonly subnetGroup?: IClusterSubnetGroup;
 
   /**
    * Access to the network connections
@@ -439,7 +472,7 @@ export class Cluster extends ClusterBase {
 
     const removalPolicy = props.removalPolicy ?? RemovalPolicy.RETAIN;
 
-    const subnetGroup = props.subnetGroup ?? new ClusterSubnetGroup(this, 'Subnets', {
+    this.subnetGroup = props.subnetGroup ?? new ClusterSubnetGroup(this, 'Subnets', {
       description: `Subnets for ${id} Redshift cluster`,
       vpc: this.vpc,
       vpcSubnets: this.vpcSubnets,
@@ -479,6 +512,8 @@ export class Cluster extends ClusterBase {
       };
     }
 
+    this.publiclyAccessible = props.publiclyAccessible ?? false;
+
     this.attachedRoles = props?.roles ?? [];
 
     const cluster = new CfnCluster(this, 'Resource', {
@@ -487,7 +522,7 @@ export class Cluster extends ClusterBase {
       automatedSnapshotRetentionPeriod: 1,
       clusterType,
       clusterIdentifier: props.clusterName,
-      clusterSubnetGroupName: subnetGroup.clusterSubnetGroupName,
+      clusterSubnetGroupName: this.subnetGroup.clusterSubnetGroupName,
       vpcSecurityGroupIds: securityGroupIds,
       port: props.port,
       clusterParameterGroupName: props.parameterGroup && props.parameterGroup.clusterParameterGroupName,
@@ -504,7 +539,7 @@ export class Cluster extends ClusterBase {
         produce: () => this.attachedRoles.map(role => role.roleArn),
       }),
       dbName: props.defaultDatabaseName || 'default_db',
-      publiclyAccessible: props.publiclyAccessible || false,
+      publiclyAccessible: this.publiclyAccessible,
       // Encryption
       kmsKeyId: props.encryptionKey && props.encryptionKey.keyArn,
       encrypted: props.encrypted ?? true,

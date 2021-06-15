@@ -33,7 +33,7 @@ export async function handler(event: AWSLambda.CloudFormationCustomResourceEvent
 
   if (event.RequestType === 'Create') {
     await createTable(clusterParams);
-    return clusterParams.tableName;
+    return { PhysicalResourceId: clusterParams.tableName };
   } else if (event.RequestType === 'Delete') {
     return; // TODO: fine to silently retain?
   } else if (event.RequestType === 'Update') {

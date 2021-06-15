@@ -31,7 +31,7 @@ export async function handler(event: AWSLambda.CloudFormationCustomResourceEvent
     const { username } = await createUser(clusterParams, env.userSecretArn ?? '');
     return { PhysicalResourceId: username };
   } else if (event.RequestType === 'Delete') {
-    return deleteUser(env, event.PhysicalResourceId);
+    return deleteUser(clusterParams, event.PhysicalResourceId);
   } else if (event.RequestType === 'Update') {
     return { PhysicalResourceId: event.PhysicalResourceId };
   } else {
@@ -40,21 +40,39 @@ export async function handler(event: AWSLambda.CloudFormationCustomResourceEvent
   }
 }
 
-async function deleteUser(env: NodeJS.ProcessEnv, username: string) {
+async function deleteUser(clusterParams: ClusterParams, username: string) {
   return new Promise<{ statementId: string }>((resolve: (value: { statementId: string }) => void, reject: (value: unknown) => void) => {
     redshiftData.executeStatement({
-      ClusterIdentifier: env.clusterName ?? '',
-      Database: env.database,
-      SecretArn: env.masterSecretArn,
-      Sql: `DROP USER ${username}`,
-      // TODO: must revoke permissions first
+      ClusterIdentifier: clusterParams.clusterId,
+      Database: clusterParams.database,
+      SecretArn: clusterParams.masterSecretArn,
+      Sql: `REVOKE INSERT ON ${clusterParams.table} FROM ${username}`,
     }, (err: Error, data: RedshiftData.ExecuteStatementOutput) => {
       if (err) {
-        // TODO: catch user does not exist?
         reject(err);
       } else {
         resolve({ statementId: data.Id ?? '' });
       }
+    });
+  }).then(({ statementId }) => {
+    return new Promise<void>((resolve: () => void, reject: (value: unknown) => void) => {
+      return waitForStatementComplete(statementId, resolve, reject);
+    });
+  }).then(() => {
+    return new Promise<{ statementId: string }>((resolve: (value: { statementId: string }) => void, reject: (value: unknown) => void) => {
+      redshiftData.executeStatement({
+        ClusterIdentifier: clusterParams.clusterId,
+        Database: clusterParams.database,
+        SecretArn: clusterParams.masterSecretArn,
+        Sql: `DROP USER ${username}`,
+      }, (err: Error, data: RedshiftData.ExecuteStatementOutput) => {
+        if (err) {
+          // TODO: catch user does not exist?
+          reject(err);
+        } else {
+          resolve({ statementId: data.Id ?? '' });
+        }
+      });
     });
   }).then(({ statementId }) => {
     return new Promise<void>((resolve: () => void, reject: (value: unknown) => void) => {
