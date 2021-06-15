@@ -271,6 +271,12 @@ export abstract class DestinationBase implements IDestination {
     if (!bufferingInterval && !bufferingSize) {
       return undefined;
     }
+    if (bufferingInterval && (bufferingInterval.toSeconds() < 60 || bufferingInterval.toSeconds() > 900)) {
+      throw new Error('Buffering interval must be between 1 and 15 minutes');
+    }
+    if (bufferingSize && (bufferingSize.toMebibytes() < 1 || bufferingSize.toMebibytes() > 128)) {
+      throw new Error('Buffering size must be between 1 and 128 MBs');
+    }
     return {
       intervalInSeconds: bufferingInterval?.toSeconds(),
       sizeInMBs: bufferingSize?.toMebibytes(),

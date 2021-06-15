@@ -156,7 +156,7 @@ export interface ICluster extends IResource, ec2.IConnectable, secretsmanager.IS
   readonly publiclyAccessible: boolean;
 
   /**
-   * TODO
+   * The cluster subnet group used by this cluster.
    */
   readonly subnetGroup?: IClusterSubnetGroup;
 }

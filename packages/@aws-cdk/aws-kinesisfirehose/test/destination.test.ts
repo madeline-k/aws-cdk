@@ -447,11 +447,17 @@ describe('destination', () => {
     });
 
     test('validates bufferingInterval', () => {
-      // valid values [60, 900] seconds
+      expect(() => new BufferingDestination({ bufferingInterval: cdk.Duration.seconds(30) }).bind(stack, { deliveryStream }))
+        .toThrowError('Buffering interval must be between 1 and 15 minutes');
+      expect(() => new BufferingDestination({ bufferingInterval: cdk.Duration.minutes(16) }).bind(stack, { deliveryStream }))
+        .toThrowError('Buffering interval must be between 1 and 15 minutes');
     });
 
     test('validates bufferingSize', () => {
-      // valid values [1, 128] MBs
+      expect(() => new BufferingDestination({ bufferingSize: cdk.Size.mebibytes(0) }).bind(stack, { deliveryStream }))
+        .toThrowError('Buffering size must be between 1 and 128 MBs');
+      expect(() => new BufferingDestination({ bufferingSize: cdk.Size.mebibytes(256) }).bind(stack, { deliveryStream }))
+        .toThrowError('Buffering size must be between 1 and 128 MBs');
     });
   });
 });
