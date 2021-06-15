@@ -340,13 +340,13 @@ export class DeliveryStream extends DeliveryStreamBase {
       keyArn: encryptionKey?.keyArn,
       keyType: encryptionKey ? 'CUSTOMER_MANAGED_CMK' : 'AWS_OWNED_CMK',
     } : undefined;
-    // TODO: we probably need to grant access to the role
+    encryptionKey?.grantEncryptDecrypt(role);
 
-    props.sourceStream?.grantRead(role); // TODO: may need to be DescribeStream instead of DescribeStreamSummary
     const streamSourceConfig = props.sourceStream ? {
       kinesisStreamArn: props.sourceStream.streamArn,
       roleArn: role.roleArn,
     } : undefined;
+    props.sourceStream?.grantRead(role);
 
     const destinationConfig = props.destination.bind(this, { deliveryStream: this });
 

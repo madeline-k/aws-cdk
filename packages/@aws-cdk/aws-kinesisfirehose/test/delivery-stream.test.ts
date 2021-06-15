@@ -123,6 +123,25 @@ describe('delivery stream', () => {
     });
 
     expect(stack).toHaveResource('AWS::KMS::Key');
+    expect(stack).toHaveResourceLike('AWS::IAM::Policy', {
+      PolicyDocument: {
+        Statement: [
+          {
+            Action: arrayWith(
+              'kms:Encrypt',
+              'kms:Decrypt',
+            ),
+            Resource: {
+              'Fn::GetAtt': [
+                'DeliveryStreamKey56A6407F',
+                'Arn',
+              ],
+            }
+          },
+        ],
+      },
+      Roles: [{Ref: 'DeliveryStreamServiceRole964EEBCC'}],
+    });
     expect(stack).toHaveResource('AWS::KinesisFirehose::DeliveryStream', {
       DeliveryStreamType: 'DirectPut',
       DeliveryStreamEncryptionConfigurationInput: {
@@ -146,6 +165,25 @@ describe('delivery stream', () => {
     });
 
     expect(stack).toHaveResource('AWS::KMS::Key');
+    expect(stack).toHaveResourceLike('AWS::IAM::Policy', {
+      PolicyDocument: {
+        Statement: [
+          {
+            Action: arrayWith(
+              'kms:Encrypt',
+              'kms:Decrypt',
+            ),
+            Resource: {
+              'Fn::GetAtt': [
+                'Key961B73FD',
+                'Arn',
+              ],
+            }
+          },
+        ],
+      },
+      Roles: [{Ref: 'DeliveryStreamServiceRole964EEBCC'}],
+    });
     expect(stack).toHaveResource('AWS::KinesisFirehose::DeliveryStream', {
       DeliveryStreamType: 'DirectPut',
       DeliveryStreamEncryptionConfigurationInput: {
@@ -162,6 +200,19 @@ describe('delivery stream', () => {
     });
 
     expect(stack).not.toHaveResource('AWS::KMS::Key');
+    expect(stack).not.toHaveResourceLike('AWS::IAM::Policy', {
+      PolicyDocument: {
+        Statement: [
+          {
+            Action: arrayWith(
+              'kms:Encrypt',
+              'kms:Decrypt',
+            ),
+          },
+        ],
+      },
+      Roles: [{Ref: 'DeliveryStreamServiceRole964EEBCC'}],
+    });
     expect(stack).toHaveResourceLike('AWS::KinesisFirehose::DeliveryStream', {
       DeliveryStreamType: 'DirectPut',
       DeliveryStreamEncryptionConfigurationInput: {
@@ -178,6 +229,19 @@ describe('delivery stream', () => {
     });
 
     expect(stack).not.toHaveResource('AWS::KMS::Key');
+    expect(stack).not.toHaveResourceLike('AWS::IAM::Policy', {
+      PolicyDocument: {
+        Statement: [
+          {
+            Action: arrayWith(
+              'kms:Encrypt',
+              'kms:Decrypt',
+            ),
+          },
+        ],
+      },
+      Roles: [{Ref: 'DeliveryStreamServiceRole964EEBCC'}],
+    });
     expect(stack).toHaveResourceLike('AWS::KinesisFirehose::DeliveryStream', {
       DeliveryStreamType: 'DirectPut',
       DeliveryStreamEncryptionConfigurationInput: ABSENT,
