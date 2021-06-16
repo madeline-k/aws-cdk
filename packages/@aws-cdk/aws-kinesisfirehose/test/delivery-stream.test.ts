@@ -136,11 +136,11 @@ describe('delivery stream', () => {
                 'DeliveryStreamKey56A6407F',
                 'Arn',
               ],
-            }
+            },
           },
         ],
       },
-      Roles: [{Ref: 'DeliveryStreamServiceRole964EEBCC'}],
+      Roles: [{ Ref: 'DeliveryStreamServiceRole964EEBCC' }],
     });
     expect(stack).toHaveResource('AWS::KinesisFirehose::DeliveryStream', {
       DeliveryStreamType: 'DirectPut',
@@ -178,11 +178,11 @@ describe('delivery stream', () => {
                 'Key961B73FD',
                 'Arn',
               ],
-            }
+            },
           },
         ],
       },
-      Roles: [{Ref: 'DeliveryStreamServiceRole964EEBCC'}],
+      Roles: [{ Ref: 'DeliveryStreamServiceRole964EEBCC' }],
     });
     expect(stack).toHaveResource('AWS::KinesisFirehose::DeliveryStream', {
       DeliveryStreamType: 'DirectPut',
@@ -211,7 +211,7 @@ describe('delivery stream', () => {
           },
         ],
       },
-      Roles: [{Ref: 'DeliveryStreamServiceRole964EEBCC'}],
+      Roles: [{ Ref: 'DeliveryStreamServiceRole964EEBCC' }],
     });
     expect(stack).toHaveResourceLike('AWS::KinesisFirehose::DeliveryStream', {
       DeliveryStreamType: 'DirectPut',
@@ -240,7 +240,7 @@ describe('delivery stream', () => {
           },
         ],
       },
-      Roles: [{Ref: 'DeliveryStreamServiceRole964EEBCC'}],
+      Roles: [{ Ref: 'DeliveryStreamServiceRole964EEBCC' }],
     });
     expect(stack).toHaveResourceLike('AWS::KinesisFirehose::DeliveryStream', {
       DeliveryStreamType: 'DirectPut',
