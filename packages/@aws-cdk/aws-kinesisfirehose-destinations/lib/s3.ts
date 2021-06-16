@@ -25,7 +25,9 @@ export interface S3DestinationProps extends firehose.DestinationProps {
   readonly prefix?: string;
 
   /**
-   * TODO Add doc
+   * A prefix that Kinesis Data Firehose evaluates and adds to failed records
+   * before writing them to S3. This prefix appears immediately following the
+   * bucket name.
    *
    * @default - TODO
    */
@@ -87,16 +89,16 @@ export class S3Destination extends firehose.DestinationBase {
           prefix: this.s3Props.prefix,
           errorOutputPrefix: this.s3Props.errorOutputPrefix,
           compressionFormat: this.s3Props.compressionFormat,
-          encryptionConfiguration: this.createEncryptionConfig(this.s3Props.encryptionKey),
+          encryptionConfiguration: createEncryptionConfig(this.s3Props.encryptionKey),
           bufferingHints: this.createBufferingHints(this.s3Props.bufferingInterval, this.s3Props.bufferingSize),
         },
       },
     };
   }
+}
 
-  private createEncryptionConfig(encryptionKey?: kms.IKey): firehose.CfnDeliveryStream.EncryptionConfigurationProperty {
-    return encryptionKey != null
-      ? { kmsEncryptionConfig: { awskmsKeyArn: encryptionKey.keyArn } }
-      : { noEncryptionConfig: 'NoEncryption' };
-  }
+function createEncryptionConfig(encryptionKey?: kms.IKey): firehose.CfnDeliveryStream.EncryptionConfigurationProperty {
+  return encryptionKey != null
+  ? { kmsEncryptionConfig: { awskmsKeyArn: encryptionKey.keyArn } }
+  : { noEncryptionConfig: 'NoEncryption' };
 }
