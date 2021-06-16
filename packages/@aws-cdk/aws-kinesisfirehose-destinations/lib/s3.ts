@@ -34,33 +34,42 @@ export interface S3DestinationProps extends firehose.DestinationProps {
   readonly errorOutputPrefix?: string;
 
   /**
-   * TODO Add doc
+   * The type of compression that Kinesis Data Firehose uses to compress the data
+   * that it delivers to the Amazon S3 bucket.
    *
-   * @default - TODO
+   * The compression formats SNAPPY or ZIP cannot be specified for Amazon Redshift
+   * destinations because they are not supported by the Amazon Redshift COPY operation
+   * that reads from the S3 bucket.
+   *
+   * @default - UNCOMPRESSED
    */
   readonly compressionFormat?: firehose.Compression;
 
   /**
    *  The AWS KMS key used to encrypt the data that it delivers
-   *  to your Amazon S3 bucket
+   *  to your Amazon S3 bucket.
    *
-   * @default - TODO
+   * @default - Data is not encrypted.
    */
   readonly encryptionKey?: kms.IKey;
 
   /**
-   * The size of the buffer that Firehose uses for incoming data before delivering it to the intermediate bucket.
+   * The size of the buffer that Firehose uses for incoming data before
+   * delivering it to the intermediate bucket.
    *
-   * TODO: valid values [60, 900] seconds
+   * Minimum: Duration.seconds(60)
+   * Maximum: Duration.seconds(900)
    *
    * @default Duration.seconds(60)
    */
   readonly bufferingInterval?: Duration;
 
   /**
-   * The length of time that Firehose buffers incoming data before delivering it to the intermediate bucket.
+   * The length of time that Firehose buffers incoming data before delivering
+   * it to the intermediate bucket.
    *
-   * TODO: valid values [1, 128] MBs
+   * Minimum: Size.mebibytes(1)
+   * Maximum: Size.mebibytes(128)
    *
    * @default Size.mebibytes(3)
    */
@@ -68,16 +77,15 @@ export interface S3DestinationProps extends firehose.DestinationProps {
 }
 
 /**
- * TODO Add doc
+ * An S3 bucket destination for data from a Kinesis Firehose delivery stream.
  */
 export class S3Destination extends firehose.DestinationBase {
   constructor(private readonly s3Props: S3DestinationProps) {
     super(s3Props);
+
+    validateS3Props(s3Props);
   }
 
-  /**
-   * TODO Add doc
-   */
   bind(_scope: Construct, options: firehose.DestinationBindOptions): firehose.DestinationConfig {
     this.s3Props.bucket.grantReadWrite(options.deliveryStream);
 
@@ -99,6 +107,18 @@ export class S3Destination extends firehose.DestinationBase {
 
 function createEncryptionConfig(encryptionKey?: kms.IKey): firehose.CfnDeliveryStream.EncryptionConfigurationProperty {
   return encryptionKey != null
-  ? { kmsEncryptionConfig: { awskmsKeyArn: encryptionKey.keyArn } }
-  : { noEncryptionConfig: 'NoEncryption' };
+    ? { kmsEncryptionConfig: { awskmsKeyArn: encryptionKey.keyArn } }
+    : { noEncryptionConfig: 'NoEncryption' };
+}
+
+function validateS3Props(s3Props: S3DestinationProps) {
+  const bufferingInterval = s3Props.bufferingInterval;
+  if (bufferingInterval != null && (bufferingInterval.toSeconds() < 60 || bufferingInterval.toSeconds() > 900)) {
+    throw new Error('Invalid bufferingInterval. Valid range: [60, 900]');
+  }
+
+  const bufferingSize = s3Props.bufferingSize;
+  if (bufferingSize != null && (bufferingSize.toMebibytes() < 1 || bufferingSize.toMebibytes() > 128)) {
+    throw new Error('Invalid bufferingSize. Valid range: [1, 128]');
+  }
 }
