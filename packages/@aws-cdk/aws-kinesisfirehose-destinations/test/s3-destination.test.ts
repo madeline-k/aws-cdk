@@ -31,14 +31,13 @@ describe('s3 destination', () => {
     expect(() => new firehosedestinations.S3Destination({
       bucket,
       bufferingSize: Size.mebibytes(0),
-    })).toThrowError('Invalid bufferingSize. Valid range: [1, 128]');
+    })).toThrowError('Invalid bufferingSize. Valid range: [1, 128] seconds');
   });
 
   it('rejects when bufferingSize is too long', () => {
     expect(() => new firehosedestinations.S3Destination({
       bucket,
       bufferingSize: Size.mebibytes(129),
-    })).toThrowError('Invalid bufferingSize. Valid range: [1, 128]');
+    })).toThrowError('Invalid bufferingSize. Valid range: [1, 128] MiB');
   });
-
 });

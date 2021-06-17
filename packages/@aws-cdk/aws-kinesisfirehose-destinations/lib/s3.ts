@@ -114,11 +114,11 @@ function createEncryptionConfig(encryptionKey?: kms.IKey): firehose.CfnDeliveryS
 function validateS3Props(s3Props: S3DestinationProps) {
   const bufferingInterval = s3Props.bufferingInterval;
   if (bufferingInterval != null && (bufferingInterval.toSeconds() < 60 || bufferingInterval.toSeconds() > 900)) {
-    throw new Error('Invalid bufferingInterval. Valid range: [60, 900]');
+    throw new Error('Invalid bufferingInterval. Valid range: [60, 900] seconds');
   }
 
   const bufferingSize = s3Props.bufferingSize;
   if (bufferingSize != null && (bufferingSize.toMebibytes() < 1 || bufferingSize.toMebibytes() > 128)) {
-    throw new Error('Invalid bufferingSize. Valid range: [1, 128]');
+    throw new Error('Invalid bufferingSize. Valid range: [1, 128] MiB');
   }
 }
