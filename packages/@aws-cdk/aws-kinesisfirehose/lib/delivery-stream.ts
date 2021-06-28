@@ -332,8 +332,11 @@ export class DeliveryStream extends DeliveryStreamBase {
     bucket.grantReadWrite(this);
     */
 
+    if (props.sourceStream && (props.encryption === StreamEncryption.AWS_OWNED || props.encryption === StreamEncryption.CUSTOMER_MANAGED || props.encryptionKey)) {
+      throw new Error('Requested server-side encryption but delivery stream source is a Kinesis Data Stream. Specify server-side encryption on the Data Stream instead.');
+    }
     if ((props.encryption === StreamEncryption.AWS_OWNED || props.encryption === StreamEncryption.UNENCRYPTED) && props.encryptionKey) {
-      throw new Error(`Specified stream encryption as ${props.encryption} but provided a customer-managed key`);
+      throw new Error(`Specified stream encryption as ${StreamEncryption[props.encryption]} but provided a customer-managed key`);
     }
     const encryptionKey = props.encryptionKey ?? (props.encryption === StreamEncryption.CUSTOMER_MANAGED ? new kms.Key(this, 'Key') : undefined);
     const encryptionConfig = (encryptionKey || (props.encryption === StreamEncryption.AWS_OWNED)) ? {

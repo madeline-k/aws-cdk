@@ -255,7 +255,7 @@ describe('delivery stream', () => {
       destination: mockS3Destination,
       encryption: firehose.StreamEncryption.AWS_OWNED,
       encryptionKey: key,
-    })).toThrowError();
+    })).toThrowError('Specified stream encryption as AWS_OWNED but provided a customer-managed key');
   });
 
   test('requesting no encryption and providing a key throws an error', () => {
@@ -265,7 +265,27 @@ describe('delivery stream', () => {
       destination: mockS3Destination,
       encryption: firehose.StreamEncryption.UNENCRYPTED,
       encryptionKey: key,
-    })).toThrowError();
+    })).toThrowError('Specified stream encryption as UNENCRYPTED but provided a customer-managed key');
+  });
+
+  test('requesting encryption or providing a key when source is a stream throws an error', () => {
+    const sourceStream = new kinesis.Stream(stack, 'Source Stream');
+
+    expect(() => new firehose.DeliveryStream(stack, 'Delivery Stream 1', {
+      destination: mockS3Destination,
+      encryption: firehose.StreamEncryption.AWS_OWNED,
+      sourceStream,
+    })).toThrowError('Requested server-side encryption but delivery stream source is a Kinesis Data Stream. Specify server-side encryption on the Data Stream instead.');
+    expect(() => new firehose.DeliveryStream(stack, 'Delivery Stream 2', {
+      destination: mockS3Destination,
+      encryption: firehose.StreamEncryption.CUSTOMER_MANAGED,
+      sourceStream,
+    })).toThrowError('Requested server-side encryption but delivery stream source is a Kinesis Data Stream. Specify server-side encryption on the Data Stream instead.');
+    expect(() => new firehose.DeliveryStream(stack, 'Delivery Stream 3', {
+      destination: mockS3Destination,
+      encryptionKey: new kms.Key(stack, 'Key'),
+      sourceStream,
+    })).toThrowError('Requested server-side encryption but delivery stream source is a Kinesis Data Stream. Specify server-side encryption on the Data Stream instead.');
   });
 
   test('grant provides access to stream', () => {
