@@ -7,7 +7,6 @@ import { KinesisMetrics } from './kinesis-fixed-canned-metrics';
 import { CfnStream } from './kinesis.generated';
 
 const READ_OPERATIONS = [
-  'kinesis:DescribeStream', // Legacy, use DescribeStreamSummary
   'kinesis:DescribeStreamSummary',
   'kinesis:GetRecords',
   'kinesis:GetShardIterator',

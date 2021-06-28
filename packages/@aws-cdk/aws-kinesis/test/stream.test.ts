@@ -498,7 +498,6 @@ describe('Kinesis data streams', () => {
               Statement: [
                 {
                   Action: [
-                    'kinesis:DescribeStream',
                     'kinesis:DescribeStreamSummary',
                     'kinesis:GetRecords',
                     'kinesis:GetShardIterator',
@@ -807,7 +806,6 @@ describe('Kinesis data streams', () => {
               Statement: [
                 {
                   Action: [
-                    'kinesis:DescribeStream',
                     'kinesis:DescribeStreamSummary',
                     'kinesis:GetRecords',
                     'kinesis:GetShardIterator',
@@ -881,7 +879,6 @@ describe('Kinesis data streams', () => {
               Statement: [
                 {
                   Action: [
-                    'kinesis:DescribeStream',
                     'kinesis:DescribeStreamSummary',
                     'kinesis:GetRecords',
                     'kinesis:GetShardIterator',
@@ -1048,7 +1045,6 @@ describe('Kinesis data streams', () => {
               Statement: [
                 {
                   Action: [
-                    'kinesis:DescribeStream',
                     'kinesis:DescribeStreamSummary',
                     'kinesis:GetRecords',
                     'kinesis:GetShardIterator',
