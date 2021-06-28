@@ -215,7 +215,7 @@ describe('destination', () => {
     });
 
     test('create resources and configuration if explicitly enabled', () => {
-      const testDestination = new BackupDestination({ backup: firehose.BackupMode.ENABLED });
+      const testDestination = new BackupDestination({ backup: firehose.BackupMode.ALL });
 
       const testDestinationConfig = testDestination.bind(stack, { deliveryStream });
 
@@ -256,7 +256,7 @@ describe('destination', () => {
     });
 
     test('can configure backup prefix', () => {
-      const testDestination = new BackupDestination({ backup: firehose.BackupMode.ENABLED, backupPrefix: 'backupPrefix' });
+      const testDestination = new BackupDestination({ backup: firehose.BackupMode.ALL, backupPrefix: 'backupPrefix' });
 
       const testDestinationConfig = testDestination.bind(stack, { deliveryStream });
 

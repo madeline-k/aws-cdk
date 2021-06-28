@@ -146,7 +146,7 @@ export class RedshiftDestination extends firehose.DestinationBase {
 
     this.redshiftProps = redshiftProps;
 
-    if (redshiftProps.backup === firehose.BackupMode.FAILED_ONLY) {
+    if (redshiftProps.backup === firehose.BackupMode.FAILED) {
       throw new Error(`Redshift delivery stream destination only supports ENABLED and DISABLED BackupMode, given ${firehose.BackupMode[redshiftProps.backup]}`);
     }
     const cluster = redshiftProps.cluster;
@@ -268,7 +268,7 @@ export class RedshiftDestination extends firehose.DestinationBase {
       processingConfiguration: this.createProcessingConfig(deliveryStream),
       retryOptions: this.createRetryOptions(retryTimeout),
       s3BackupConfiguration: this.createBackupConfig(scope, deliveryStream),
-      s3BackupMode: (backup === firehose.BackupMode.ENABLED) ? 'Enabled' : 'Disabled',
+      s3BackupMode: (backup === firehose.BackupMode.ALL) ? 'Enabled' : 'Disabled',
     };
   }
 

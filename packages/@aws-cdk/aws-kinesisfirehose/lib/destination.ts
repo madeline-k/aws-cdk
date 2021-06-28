@@ -46,12 +46,12 @@ export enum BackupMode {
   /**
    * All records are backed up.
    */
-  ENABLED,
+  ALL,
 
   /**
    * Only records that failed to deliver or transform are backed up.
    */
-  FAILED_ONLY,
+  FAILED,
 
   /**
    * No records are backed up.
@@ -163,7 +163,7 @@ export interface DestinationProps {
   /**
    * Indicates the mode by which incoming records should be backed up to S3, if any.
    *
-   * If `backupBucket ` is provided, this will be implicitly set to `ENABLED`.
+   * If `backupBucket ` is provided, this will be implicitly set to `BackupMode.ALL`.
    *
    * @default BackupMode.DISABLED - source records are not backed up to S3.
    */
@@ -172,7 +172,7 @@ export interface DestinationProps {
   /**
    * The S3 bucket that will store data and failed records.
    *
-   * @default - if `backup` is set to `ENABLED` or `FAILED_ONLY`, a bucket will be created for you.
+   * @default - if `backup` is set to `BackupMode.ALL` or `BackupMode.FAILED`, a bucket will be created for you.
    */
   readonly backupBucket?: s3.IBucket;
 

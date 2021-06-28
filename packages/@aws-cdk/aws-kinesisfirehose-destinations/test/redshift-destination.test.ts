@@ -122,7 +122,7 @@ describe('redshift destination', () => {
       compression: firehose.Compression.GZIP,
       logging: true,
       processors: [{ lambdaFunction: processorFunction }],
-      backup: firehose.BackupMode.ENABLED,
+      backup: firehose.BackupMode.ALL,
     });
 
     const destinationConfig = destination.bind(stack, { deliveryStream });
@@ -220,8 +220,8 @@ describe('redshift destination', () => {
       database: 'database',
       tableName: 'tableName',
       tableColumns: [{ name: 'col1', dataType: 'varchar(4)' }],
-      backup: firehose.BackupMode.FAILED_ONLY,
-    })).toThrowError('Redshift delivery stream destination only supports ENABLED and DISABLED BackupMode, given FAILED_ONLY');
+      backup: firehose.BackupMode.FAILED,
+    })).toThrowError('Redshift delivery stream destination only supports ALL and DISABLED BackupMode, given FAILED');
   });
 
   test('uses master secret if provided', () => {
@@ -243,7 +243,7 @@ describe('redshift destination', () => {
       database: 'database',
       tableName: 'tableName',
       tableColumns: [{ name: 'col1', dataType: 'varchar(4)' }],
-      backup: firehose.BackupMode.ENABLED,
+      backup: firehose.BackupMode.ALL,
     });
 
     destination.bind(stack, { deliveryStream });
@@ -295,7 +295,7 @@ describe('redshift destination', () => {
       database: 'database',
       tableName: 'tableName',
       tableColumns: [{ name: 'col1', dataType: 'varchar(4)' }],
-      backup: firehose.BackupMode.ENABLED,
+      backup: firehose.BackupMode.ALL,
     })).toThrowError('Master secret must be provided or Redshift cluster must generate a master secret');
   });
 
@@ -321,7 +321,7 @@ describe('redshift destination', () => {
       database: 'database',
       tableName: 'tableName',
       tableColumns: [{ name: 'col1', dataType: 'varchar(4)' }],
-      backup: firehose.BackupMode.ENABLED,
+      backup: firehose.BackupMode.ALL,
     })).toThrowError('Master secret must be provided or Redshift cluster must generate a master secret');
   });
 
