@@ -114,39 +114,6 @@ describe('destination', () => {
       });
     });
 
-    test('throws error if log stream provided without log group', () => {
-      const logGroup = new logs.LogGroup(stack, 'Log Group');
-      const logStream = logGroup.addStream('streamId');
-      const testDestination = new LoggingDestination({ logStream });
-
-      expect(() => testDestination.bind(stack, { deliveryStream })).toThrowError('Log group must be provided to Destination if log stream is provided');
-    });
-
-    test('uses provided log stream', () => {
-      const logGroup = new logs.LogGroup(stack, 'Log Group');
-      const logStream = logGroup.addStream('streamId');
-      const testDestination = new LoggingDestination({ logGroup, logStream });
-
-      const testDestinationConfig = testDestination.bind(stack, { deliveryStream });
-
-      expect(stack).toCountResources('AWS::Logs::LogStream', 1);
-      expect(stack.resolve(testDestinationConfig)).toMatchObject({
-        properties: {
-          testDestinationConfig: {
-            loggingConfig: {
-              enabled: true,
-              logGroupName: {
-                Ref: 'LogGroupD9735569',
-              },
-              logStreamName: {
-                Ref: 'LogGroupstreamIdA1293DC2',
-              },
-            },
-          },
-        },
-      });
-    });
-
     test('re-uses log group if called multiple times', () => {
       const testDestination = new class extends firehose.DestinationBase {
         public bind(scope: Construct, options: firehose.DestinationBindOptions): firehose.DestinationConfig {

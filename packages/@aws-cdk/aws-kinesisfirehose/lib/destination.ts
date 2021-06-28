@@ -138,18 +138,9 @@ export interface DestinationProps {
   /**
    * The CloudWatch log group where log streams will be created to hold error logs.
    *
-   * If `logStream` is provided, this must be provided.
-   *
    * @default - if `logging` is set to `true`, a log group will be created for you.
    */
   readonly logGroup?: logs.ILogGroup;
-
-  /**
-   * The CloudWatch log stream where error logs will be written.
-   *
-   * @default - if `logging` is set to true or `logGroup` is provided, a log stream will be created for you.
-   */
-  readonly logStream?: logs.ILogStream;
 
   /**
    * The series of data transformations that should be performed on the data before writing to the destination.
@@ -203,16 +194,12 @@ export abstract class DestinationBase implements IDestination {
       throw new Error('Destination logging cannot be set to false when logGroup is provided');
     }
     if (this.props.logging !== false || this.props.logGroup) {
-      this.logGroup = this.logGroup ?? this.props.logGroup ?? (!this.props.logStream ? new logs.LogGroup(scope, 'Log Group') : undefined);
-      if (!this.logGroup) {
-        throw new Error('Log group must be provided to Destination if log stream is provided');
-      }
-      this.logGroup.grantWrite(deliveryStream); // TODO: too permissive? add a new grant on the stream resource if it's passed in?
-      const logStream = this.props.logStream ?? this.logGroup.addStream(streamId);
+      this.logGroup = this.logGroup ?? this.props.logGroup ?? new logs.LogGroup(scope, 'Log Group');
+      this.logGroup.grantWrite(deliveryStream); // TODO: too permissive? add a new grant on the stream resource?
       return {
         enabled: true,
         logGroupName: this.logGroup.logGroupName,
-        logStreamName: logStream.logStreamName,
+        logStreamName: this.logGroup.addStream(streamId).logStreamName, // TODO: probably concatenate the stream ID with the construct node ID so conflicts don't occur
       };
     }
     return undefined;
