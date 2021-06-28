@@ -137,13 +137,6 @@ export interface ICluster extends IResource, ec2.IConnectable, secretsmanager.IS
   readonly clusterName: string;
 
   /**
-   * ARN of the cluster
-   *
-   * @attribute
-   */
-  readonly clusterArn: string;
-
-  /**
    * The endpoint to use for read/write operations
    *
    * @attribute EndpointAddress,EndpointPort
@@ -363,8 +356,6 @@ abstract class ClusterBase extends Resource implements ICluster {
    */
   public abstract readonly clusterName: string;
 
-  public abstract readonly clusterArn: string;
-
   /**
    * The endpoint to use for read/write operations
    */
@@ -406,12 +397,6 @@ export class Cluster extends ClusterBase {
         defaultPort: ec2.Port.tcp(attrs.clusterEndpointPort),
       });
       public readonly clusterName = attrs.clusterName;
-      public readonly clusterArn = Stack.of(scope).formatArn({
-        service: 'redshift',
-        resource: 'cluster',
-        resourceName: attrs.clusterName,
-        sep: ':',
-      });
       public readonly instanceIdentifiers: string[] = [];
       public readonly clusterEndpoint = new Endpoint(attrs.clusterEndpointAddress, attrs.clusterEndpointPort);
       public readonly publiclyAccessible = attrs.publiclyAccessible ?? false;
@@ -425,8 +410,6 @@ export class Cluster extends ClusterBase {
    * Identifier of the cluster
    */
   public readonly clusterName: string;
-
-  public readonly clusterArn: string;
 
   /**
    * The endpoint to use for read/write operations
@@ -550,12 +533,6 @@ export class Cluster extends ClusterBase {
     });
 
     this.clusterName = cluster.ref;
-    this.clusterArn = Stack.of(this).formatArn({
-      service: 'redshift',
-      resource: 'cluster',
-      resourceName: this.clusterName,
-      sep: ':',
-    });
 
     // create a number token that represents the port of the cluster
     const portAttribute = Token.asNumber(cluster.attrEndpointPort);
