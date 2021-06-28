@@ -346,7 +346,10 @@ export class DeliveryStream extends DeliveryStreamBase {
       kinesisStreamArn: props.sourceStream.streamArn,
       roleArn: role.roleArn,
     } : undefined;
-    props.sourceStream?.grantRead(role);
+    const readStreamGrant = props.sourceStream?.grantRead(role);
+    if (readStreamGrant && readStreamGrant.principalStatement) {
+      readStreamGrant.principalStatement.addActions('kinesis:DescribeStream');
+    }
 
     const destinationConfig = props.destination.bind(this, { deliveryStream: this });
 
