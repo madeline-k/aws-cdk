@@ -173,6 +173,8 @@ export interface DestinationProps {
    * @default 'source'
    */
   readonly backupPrefix?: string;
+
+  // TODO: add backupBufferInterval and backupBufferSize
 }
 
 /**
@@ -221,6 +223,7 @@ export abstract class DestinationBase implements IDestination {
           parameters.push({ parameterName: 'BufferIntervalInSeconds', parameterValue: processor.bufferInterval.toSeconds().toString() });
         }
         if (processor.bufferSize) {
+          // TODO: validate buffer size < 6MB due to Lambda synchronous invocation request/response size limits
           parameters.push({ parameterName: 'BufferSizeInMBs', parameterValue: processor.bufferSize.toMebibytes().toString() });
         }
         if (processor.retries) {

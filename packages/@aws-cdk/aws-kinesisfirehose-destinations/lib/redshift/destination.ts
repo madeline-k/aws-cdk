@@ -165,7 +165,7 @@ export class RedshiftDestination extends firehose.DestinationBase {
       throw new Error('Retry timeout must be less that 2 hours');
     }
     if (redshiftProps.compression === firehose.Compression.SNAPPY || redshiftProps.compression === firehose.Compression.ZIP) {
-      throw new Error('Compression must not be SNAPPY or ZIP');
+      throw new Error('Compression must not be HADOOP_SNAPPY, SNAPPY, or ZIP');
     }
   }
 
@@ -241,7 +241,7 @@ export class RedshiftDestination extends firehose.DestinationBase {
       bucketArn: intermediateBucket.bucketArn,
       roleArn: (deliveryStream.grantPrincipal as iam.Role).roleArn,
       bufferingHints: this.createBufferingHints(bufferingInterval, bufferingSize),
-      cloudWatchLoggingOptions: this.createLoggingOptions(scope, deliveryStream, 'IntermediateS3'),
+      cloudWatchLoggingOptions: this.createLoggingOptions(scope, deliveryStream, 'IntermediateS3'), // this will fail if "logStream" is provided
       compressionFormat: compression ?? firehose.Compression.UNCOMPRESSED,
     };
     // TODO: encryptionConfiguration? why need to provide if bucket has encryption
@@ -258,7 +258,7 @@ export class RedshiftDestination extends firehose.DestinationBase {
       copyCommand: {
         dataTableName: tableName,
         dataTableColumns: tableColumns.map(column => column.name).join(),
-        copyOptions: copyOptions,
+        copyOptions: copyOptions, // TODO: add GZIP if compression enabled
       },
       password: user.password.toString(),
       username: user.username.toString(),

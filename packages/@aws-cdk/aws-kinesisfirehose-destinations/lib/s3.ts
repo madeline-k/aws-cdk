@@ -43,7 +43,7 @@ export interface S3DestinationProps extends firehose.DestinationProps {
    *
    * @default - UNCOMPRESSED
    */
-  readonly compressionFormat?: firehose.Compression;
+  readonly compression?: firehose.Compression;
 
   /**
    *  The AWS KMS key used to encrypt the data that it delivers

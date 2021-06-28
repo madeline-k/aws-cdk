@@ -521,7 +521,16 @@ describe('redshift destination', () => {
       tableColumns: [{ name: 'col1', dataType: 'varchar(4)' }, { name: 'col2', dataType: 'float' }],
       logging: false,
       compression: firehose.Compression.SNAPPY,
-    })).toThrowError('Compression must not be SNAPPY or ZIP');
+    })).toThrowError('Compression must not be HADOOP_SNAPPY, SNAPPY, or ZIP');
+    expect(() => new firehosedestinations.RedshiftDestination({
+      cluster: cluster,
+      user: { username: 'firehose' },
+      database: 'database',
+      tableName: 'tableName',
+      tableColumns: [{ name: 'col1', dataType: 'varchar(4)' }, { name: 'col2', dataType: 'float' }],
+      logging: false,
+      compression: firehose.Compression.HADOOP_SNAPPY,
+    })).toThrowError('Compression must not be HADOOP_SNAPPY, SNAPPY, or ZIP');
     expect(() => new firehosedestinations.RedshiftDestination({
       cluster: cluster,
       user: { username: 'firehose' },
@@ -530,6 +539,6 @@ describe('redshift destination', () => {
       tableColumns: [{ name: 'col1', dataType: 'varchar(4)' }, { name: 'col2', dataType: 'float' }],
       logging: false,
       compression: firehose.Compression.ZIP,
-    })).toThrowError('Compression must not be SNAPPY or ZIP');
+    })).toThrowError('Compression must not be HADOOP_SNAPPY, SNAPPY, or ZIP');
   });
 });
