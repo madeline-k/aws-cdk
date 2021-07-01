@@ -6,6 +6,7 @@ import * as s3 from '@aws-cdk/aws-s3';
 import * as cdk from '@aws-cdk/core';
 import { Construct } from 'constructs';
 import * as firehose from '../lib';
+import { LambdaFunctionProcessor } from '../lib/processor';
 
 describe('destination', () => {
   let stack: cdk.Stack;
@@ -285,7 +286,7 @@ describe('destination', () => {
     });
 
     test('creates configuration if a processor is specified with onlyrequired parameters', () => {
-      const testDestination = new ProcessingDestination({ processors: [{ lambdaFunction }] });
+      const testDestination = new ProcessingDestination({ processors: [new LambdaFunctionProcessor(lambdaFunction, {})] });
 
       const testDestinationConfig = testDestination.bind(stack, { deliveryStream });
 
@@ -298,12 +299,12 @@ describe('destination', () => {
                 {
                   parameters: [
                     {
-                      parameterName: 'LambdaArn',
-                      parameterValue: 'arn:aws:lambda:xx-west-1:111122223333:function:my-function',
-                    },
-                    {
                       parameterName: 'RoleArn',
                       parameterValue: 'arn:aws:iam::111122223333:role/DeliveryStreamRole',
+                    },
+                    {
+                      parameterName: 'LambdaArn',
+                      parameterValue: 'arn:aws:lambda:xx-west-1:111122223333:function:my-function',
                     },
                   ],
                   type: 'Lambda',
@@ -317,7 +318,7 @@ describe('destination', () => {
 
     test('creates configuration if a processor is specified with optional parameters', () => {
       const testDestination = new ProcessingDestination({
-        processors: [{ lambdaFunction, bufferInterval: cdk.Duration.minutes(1), bufferSize: cdk.Size.kibibytes(1024), retries: 1 }],
+        processors: [new LambdaFunctionProcessor(lambdaFunction, { bufferInterval: cdk.Duration.minutes(1), bufferSize: cdk.Size.kibibytes(1024), retries: 1 })],
       });
 
       const testDestinationConfig = testDestination.bind(stack, { deliveryStream });
@@ -331,12 +332,12 @@ describe('destination', () => {
                 {
                   parameters: [
                     {
-                      parameterName: 'LambdaArn',
-                      parameterValue: 'arn:aws:lambda:xx-west-1:111122223333:function:my-function',
-                    },
-                    {
                       parameterName: 'RoleArn',
                       parameterValue: 'arn:aws:iam::111122223333:role/DeliveryStreamRole',
+                    },
+                    {
+                      parameterName: 'LambdaArn',
+                      parameterValue: 'arn:aws:lambda:xx-west-1:111122223333:function:my-function',
                     },
                     {
                       parameterName: 'BufferIntervalInSeconds',
@@ -361,7 +362,7 @@ describe('destination', () => {
     });
 
     test('throws an error if multiple processors are specified', () => {
-      const testDestination = new ProcessingDestination({ processors: [{ lambdaFunction }, { lambdaFunction }] });
+      const testDestination = new ProcessingDestination({ processors: [new LambdaFunctionProcessor(lambdaFunction), new LambdaFunctionProcessor(lambdaFunction)] });
 
       expect(() => testDestination.bind(stack, { deliveryStream })).toThrowError('Only one processor is allowed per delivery stream destination');
     });

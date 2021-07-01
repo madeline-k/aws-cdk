@@ -1,11 +1,11 @@
 import * as iam from '@aws-cdk/aws-iam';
-import * as lambda from '@aws-cdk/aws-lambda';
 import * as logs from '@aws-cdk/aws-logs';
 import * as s3 from '@aws-cdk/aws-s3';
 import { Duration, Size } from '@aws-cdk/core';
 import { Construct } from 'constructs';
 import { IDeliveryStream } from './delivery-stream';
 import { CfnDeliveryStream } from './kinesisfirehose.generated';
+import { DataProcessor } from './processor';
 
 /**
  * A delivery stream destination configuration
@@ -87,39 +87,6 @@ export enum Compression {
    * ZIP
    */
   ZIP = 'ZIP'
-}
-
-/**
- * Specification of a data processor that Firehose will call to transform records before delivering data.
- * TODO: make this more generic since the CFN resource seems to be future-proofing the Lambda-only integration
- */
-export interface DataProcessor {
-  /**
-   * The Lambda function that will be called to transform records.
-   * TODO: inspect timeout to validate < 5 minutes?
-   */
-  readonly lambdaFunction: lambda.IFunction;
-
-  /**
-   * The length of time Firehose will buffer incoming data before calling the processor.
-   *
-   * @default Duration.minutes(1)
-   */
-  readonly bufferInterval?: Duration;
-
-  /**
-   * The amount of incoming data Firehose will buffer before calling the processor.
-   *
-   * @default Size.mebibytes(3)
-   */
-  readonly bufferSize?: Size;
-
-  /**
-   * The number of times Firehose will retry the Lambda function invocation due to network timeout or invocation limits.
-   *
-   * @default 3
-   */
-  readonly retries?: number;
 }
 
 /**
@@ -208,29 +175,26 @@ export abstract class DestinationBase implements IDestination {
   }
 
   protected createProcessingConfig(deliveryStream: IDeliveryStream): CfnDeliveryStream.ProcessingConfigurationProperty | undefined {
-    // TODO: this seems (by the UI) to only allow a single transformation but seems to accept an array?
     if (this.props.processors && this.props.processors.length > 1) {
       throw new Error('Only one processor is allowed per delivery stream destination');
     }
     if (this.props.processors && this.props.processors.length > 0) {
       const processors = this.props.processors.map((processor) => {
-        processor.lambdaFunction.grantInvoke(deliveryStream);
-        const parameters = [
-          { parameterName: 'LambdaArn', parameterValue: processor.lambdaFunction.functionArn },
-          { parameterName: 'RoleArn', parameterValue: (deliveryStream.grantPrincipal as iam.Role).roleArn },
-        ];
-        if (processor.bufferInterval) {
-          parameters.push({ parameterName: 'BufferIntervalInSeconds', parameterValue: processor.bufferInterval.toSeconds().toString() });
+        const processorConfig = processor.bind(deliveryStream);
+        const parameters = [{ parameterName: 'RoleArn', parameterValue: (deliveryStream.grantPrincipal as iam.Role).roleArn }];
+        parameters.push(processorConfig.processorIdentifier);
+        if (processorConfig.bufferInterval) {
+          parameters.push({ parameterName: 'BufferIntervalInSeconds', parameterValue: processorConfig.bufferInterval.toSeconds().toString() });
         }
-        if (processor.bufferSize) {
+        if (processorConfig.bufferSize) {
           // TODO: validate buffer size < 6MB due to Lambda synchronous invocation request/response size limits
-          parameters.push({ parameterName: 'BufferSizeInMBs', parameterValue: processor.bufferSize.toMebibytes().toString() });
+          parameters.push({ parameterName: 'BufferSizeInMBs', parameterValue: processorConfig.bufferSize.toMebibytes().toString() });
         }
-        if (processor.retries) {
-          parameters.push({ parameterName: 'NumberOfRetries', parameterValue: processor.retries.toString() });
+        if (processorConfig.retries) {
+          parameters.push({ parameterName: 'NumberOfRetries', parameterValue: processorConfig.retries.toString() });
         }
         return {
-          type: 'Lambda',
+          type: processorConfig.processorType,
           parameters: parameters,
         };
       });
