@@ -39,7 +39,7 @@ describe('processor', () => {
           parameterValue: functionArn,
         },
       });
-    })
+    });
 
     test('passes configuration through', () => {
       const processor = new LambdaFunctionProcessor(lambdaFunction, {
@@ -55,6 +55,6 @@ describe('processor', () => {
         bufferSize: cdk.Size.mebibytes(64),
         retries: 5,
       });
-    })
+    });
   });
 });

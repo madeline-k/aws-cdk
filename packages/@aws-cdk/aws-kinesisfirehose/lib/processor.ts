@@ -21,7 +21,7 @@ export interface DataProcessorProps {
   readonly bufferSize?: Size;
 
   /**
-   * The number of times Kinesis Data Firehose will retry the Lambda function invocation due to network timeout or invocation limits.
+   * The number of times Kinesis Data Firehose will retry the processor invocation due to network timeout or invocation limits.
    *
    * @default 3
    */
@@ -73,26 +73,24 @@ export interface DataProcessorConfig extends DataProcessorProps {
 /**
  * A data processor that Kinesis Data Firehose will call to transform records before delivering data.
  */
-export abstract class DataProcessor {
+export interface IDataProcessor {
   /**
    * Binds this processor to the delivery stream of the destination
    *
    * Implementers should use this method to grant processor invocation permissions to the provided stream and return the
    * necessary configuration to register as a processor.
    */
-  public abstract bind(deliveryStream: IDeliveryStream): DataProcessorConfig
+  bind(deliveryStream: IDeliveryStream): DataProcessorConfig
 }
 
 /**
  * Use a Lambda function to transform records.
  * TODO: inspect timeout to validate < 5 minutes?
  */
-export class LambdaFunctionProcessor extends DataProcessor {
+export class LambdaFunctionProcessor implements IDataProcessor {
   private readonly processorType = 'Lambda';
   private readonly processorIdentifier: DataProcessorIdentifier;
   constructor(private readonly lambdaFunction: lambda.IFunction, private readonly props: DataProcessorProps = {}) {
-    super();
-
     this.processorIdentifier = {
       parameterName: 'LambdaArn',
       parameterValue: lambdaFunction.functionArn,

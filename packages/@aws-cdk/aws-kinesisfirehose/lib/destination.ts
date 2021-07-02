@@ -5,7 +5,7 @@ import { Duration, Size } from '@aws-cdk/core';
 import { Construct } from 'constructs';
 import { IDeliveryStream } from './delivery-stream';
 import { CfnDeliveryStream } from './kinesisfirehose.generated';
-import { DataProcessor } from './processor';
+import { IDataProcessor } from './processor';
 
 /**
  * A delivery stream destination configuration
@@ -116,7 +116,7 @@ export interface DestinationProps {
    *
    * @default [] - no data transformation will occur.
    */
-  readonly processors?: DataProcessor[];
+  readonly processors?: IDataProcessor[];
 
   /**
    * Indicates the mode by which incoming records should be backed up to S3, if any.
