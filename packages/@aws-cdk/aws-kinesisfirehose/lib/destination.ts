@@ -28,11 +28,11 @@ export interface DestinationBindOptions {
 }
 
 /**
- * A Kinesis Firehose Delivery Stream destination
+ * A Kinesis Data Firehose Delivery Stream destination
  */
 export interface IDestination {
   /**
-   * Binds this destination to the Kinesis Firehose delivery stream
+   * Binds this destination to the Kinesis Data Firehose delivery stream
    *
    * Implementers should use this method to bind resources to the stack and initialize values using the provided stream.
    */
@@ -60,7 +60,7 @@ export enum BackupMode {
 }
 
 /**
- * Possible compression options Firehose can use to compress data on delivery
+ * Possible compression options Kinesis Data Firehose can use to compress data on delivery
  */
 export enum Compression {
   /**
@@ -135,7 +135,7 @@ export interface DestinationProps {
   readonly backupBucket?: s3.IBucket;
 
   /**
-   * The prefix Firehose will prepend to all source records backed up to S3.
+   * The prefix Kinesis Data Firehose will prepend to all source records backed up to S3.
    *
    * @default 'source'
    */

@@ -285,7 +285,7 @@ describe('destination', () => {
       });
     });
 
-    test('creates configuration if a processor is specified with onlyrequired parameters', () => {
+    test('creates configuration if a processor is specified with only required parameters', () => {
       const testDestination = new ProcessingDestination({ processors: [new LambdaFunctionProcessor(lambdaFunction, {})] });
 
       const testDestinationConfig = testDestination.bind(stack, { deliveryStream });
@@ -318,7 +318,9 @@ describe('destination', () => {
 
     test('creates configuration if a processor is specified with optional parameters', () => {
       const testDestination = new ProcessingDestination({
-        processors: [new LambdaFunctionProcessor(lambdaFunction, { bufferInterval: cdk.Duration.minutes(1), bufferSize: cdk.Size.kibibytes(1024), retries: 1 })],
+        processors: [
+          new LambdaFunctionProcessor(lambdaFunction, { bufferInterval: cdk.Duration.minutes(1), bufferSize: cdk.Size.kibibytes(1024), retries: 1 }),
+        ],
       });
 
       const testDestinationConfig = testDestination.bind(stack, { deliveryStream });
@@ -362,7 +364,9 @@ describe('destination', () => {
     });
 
     test('throws an error if multiple processors are specified', () => {
-      const testDestination = new ProcessingDestination({ processors: [new LambdaFunctionProcessor(lambdaFunction), new LambdaFunctionProcessor(lambdaFunction)] });
+      const testDestination = new ProcessingDestination({
+        processors: [new LambdaFunctionProcessor(lambdaFunction), new LambdaFunctionProcessor(lambdaFunction)],
+      });
 
       expect(() => testDestination.bind(stack, { deliveryStream })).toThrowError('Only one processor is allowed per delivery stream destination');
     });
@@ -397,8 +401,8 @@ describe('destination', () => {
       });
     });
 
-    test('creates configuration when properties provided', () => {
-      const testDestination = new BufferingDestination({ bufferingInterval: cdk.Duration.minutes(1), bufferingSize: cdk.Size.kibibytes(1024) });
+    test('creates configuration when interval provided', () => {
+      const testDestination = new BufferingDestination({ bufferingInterval: cdk.Duration.minutes(1) });
 
       const testDestinationConfig = testDestination.bind(stack, { deliveryStream });
 
@@ -407,6 +411,21 @@ describe('destination', () => {
           testDestinationConfig: {
             bufferingConfig: {
               intervalInSeconds: 60,
+            },
+          },
+        },
+      });
+    });
+
+    test('creates configuration when size provided', () => {
+      const testDestination = new BufferingDestination({ bufferingSize: cdk.Size.kibibytes(1024) });
+
+      const testDestinationConfig = testDestination.bind(stack, { deliveryStream });
+
+      expect(stack.resolve(testDestinationConfig)).toStrictEqual({
+        properties: {
+          testDestinationConfig: {
+            bufferingConfig: {
               sizeInMBs: 1,
             },
           },

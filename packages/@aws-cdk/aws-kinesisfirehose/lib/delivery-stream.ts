@@ -204,7 +204,7 @@ export interface DeliveryStreamProps {
   readonly sourceStream?: kinesis.IStream;
 
   /**
-   * The IAM role assumed by Kinesis Firehose to read from sources, invoke processors, and write to destinations
+   * The IAM role assumed by Kinesis Data Firehose to read from sources, invoke processors, and write to destinations
    *
    * @default - a role will be created with default permissions.
    */
@@ -261,7 +261,7 @@ export interface DeliveryStreamAttributes {
   /**
    * The IAM role associated with this delivery stream.
    *
-   * Assumed by Kinesis Firehose to read from sources, invoke processors, and write to destinations.
+   * Assumed by Kinesis Data Firehose to read from sources, invoke processors, and write to destinations.
    *
    * @default - the imported stream cannot be granted access to other resources as an `iam.IGrantable`.
    */
@@ -332,7 +332,10 @@ export class DeliveryStream extends DeliveryStreamBase {
     bucket.grantReadWrite(this);
     */
 
-    if (props.sourceStream && (props.encryption === StreamEncryption.AWS_OWNED || props.encryption === StreamEncryption.CUSTOMER_MANAGED || props.encryptionKey)) {
+    if (
+      props.sourceStream &&
+        (props.encryption === StreamEncryption.AWS_OWNED || props.encryption === StreamEncryption.CUSTOMER_MANAGED || props.encryptionKey)
+    ) {
       throw new Error('Requested server-side encryption but delivery stream source is a Kinesis Data Stream. Specify server-side encryption on the Data Stream instead.');
     }
     if ((props.encryption === StreamEncryption.AWS_OWNED || props.encryption === StreamEncryption.UNENCRYPTED) && props.encryptionKey) {

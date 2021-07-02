@@ -1,48 +1,85 @@
-import { Duration, Size } from '@aws-cdk/core';
 import * as lambda from '@aws-cdk/aws-lambda';
+import { Duration, Size } from '@aws-cdk/core';
 import { IDeliveryStream } from './delivery-stream';
 
 /**
  * Configure the data processor.
  */
 export interface DataProcessorProps {
-
   /**
-   * The length of time Firehose will buffer incoming data before calling the processor.
+   * The length of time Kinesis Data Firehose will buffer incoming data before calling the processor.
    *
    * @default Duration.minutes(1)
    */
   readonly bufferInterval?: Duration;
 
   /**
-   * The amount of incoming data Firehose will buffer before calling the processor.
+   * The amount of incoming data Kinesis Data Firehose will buffer before calling the processor.
    *
    * @default Size.mebibytes(3)
    */
   readonly bufferSize?: Size;
 
   /**
-   * The number of times Firehose will retry the Lambda function invocation due to network timeout or invocation limits.
+   * The number of times Kinesis Data Firehose will retry the Lambda function invocation due to network timeout or invocation limits.
    *
    * @default 3
    */
   readonly retries?: number;
 }
 
+/**
+ * The key-value pair that identifies the underlying processor resource.
+ *
+ * @see http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-kinesisfirehose-deliverystream-processorparameter.html
+ * @example {
+ *   parameterName: 'LambdaArn',
+ *   parameterValue: lambdaFunction.functionArn,
+ * }
+ */
 export interface DataProcessorIdentifier {
+  /**
+   * The parameter name that corresponds to the processor resource's identifier.
+   *
+   * Must be an accepted value in `CfnDeliveryStream.ProcessoryParameterProperty.ParameterName`.
+   */
   readonly parameterName: string;
+
+  /**
+   * The identifier of the underlying processor resource.
+   */
   readonly parameterValue: string;
 }
 
+/**
+ * The full configuration of a data processor.
+ */
 export interface DataProcessorConfig extends DataProcessorProps {
+  /**
+   * The type of the underlying processor resource.
+   *
+   * Must be an accepted value in `CfnDeliveryStream.ProcessorProperty.Type`.
+   * @see http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-kinesisfirehose-deliverystream-processor.html#cfn-kinesisfirehose-deliverystream-processor-type
+   * @example 'Lambda'
+   */
   readonly processorType: string;
+
+  /**
+   * The key-value pair that identifies the underlying processor resource.
+   */
   readonly processorIdentifier: DataProcessorIdentifier;
 }
 
 /**
- * A data processor that Firehose will call to transform records before delivering data.
+ * A data processor that Kinesis Data Firehose will call to transform records before delivering data.
  */
 export abstract class DataProcessor {
+  /**
+   * Binds this processor to the delivery stream of the destination
+   *
+   * Implementers should use this method to grant processor invocation permissions to the provided stream and return the
+   * necessary configuration to register as a processor.
+   */
   public abstract bind(deliveryStream: IDeliveryStream): DataProcessorConfig
 }
 
