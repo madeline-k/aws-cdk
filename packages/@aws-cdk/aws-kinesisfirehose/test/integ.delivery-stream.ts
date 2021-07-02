@@ -31,7 +31,7 @@ const mockS3Destination: firehose.IDestination = {
 };
 
 new firehose.DeliveryStream(stack, 'Delivery Stream', {
-  destination: mockS3Destination,
+  destinations: [mockS3Destination],
 });
 
 app.synth();

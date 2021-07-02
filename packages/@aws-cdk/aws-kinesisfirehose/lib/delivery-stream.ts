@@ -183,11 +183,11 @@ export enum StreamEncryption {
  */
 export interface DeliveryStreamProps {
   /**
-   * The destination that this delivery stream will deliver data to.
+   * The destinations that this delivery stream will deliver data to.
    *
-   * TODO: figure out if multiple destinations are supported (describe stream API return value seems to indicate so) and convert this to a list
+   * Only a singleton array is supported at this time.
    */
-  readonly destination: IDestination;
+  readonly destinations: IDestination[];
 
   /**
    * A name for the delivery stream.
@@ -357,7 +357,10 @@ export class DeliveryStream extends DeliveryStreamBase {
       readStreamGrant.principalStatement.addActions('kinesis:DescribeStream');
     }
 
-    const destinationConfig = props.destination.bind(this, { deliveryStream: this });
+    if (props.destinations.length !== 1) {
+      throw new Error(`Only one destination is allowed per delivery stream, given ${props.destinations.length}`)
+    }
+    const destinationConfig = props.destinations[0].bind(this, { deliveryStream: this });
 
     const resource = new CfnDeliveryStream(this, 'Resource', {
       deliveryStreamEncryptionConfigurationInput: encryptionConfig,

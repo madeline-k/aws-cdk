@@ -33,7 +33,7 @@ describe('delivery stream', () => {
 
   test('creates stream with default values', () => {
     new firehose.DeliveryStream(stack, 'Delivery Stream', {
-      destination: mockS3Destination,
+      destinations: [mockS3Destination],
     });
 
     expect(stack).toHaveResource('AWS::KinesisFirehose::DeliveryStream', {
@@ -54,7 +54,7 @@ describe('delivery stream', () => {
     });
 
     const deliveryStream = new firehose.DeliveryStream(stack, 'Delivery Stream', {
-      destination: mockS3Destination,
+      destinations: [mockS3Destination],
       role: role,
     });
 
@@ -63,7 +63,7 @@ describe('delivery stream', () => {
 
   test('not providing role creates one', () => {
     new firehose.DeliveryStream(stack, 'Delivery Stream', {
-      destination: mockS3Destination,
+      destinations: [mockS3Destination],
     });
 
     expect(stack).toHaveResourceLike('AWS::IAM::Role', {
@@ -86,7 +86,7 @@ describe('delivery stream', () => {
     });
 
     new firehose.DeliveryStream(stack, 'Delivery Stream', {
-      destination: mockS3Destination,
+      destinations: [mockS3Destination],
       sourceStream: sourceStream,
       role: role,
     });
@@ -118,7 +118,7 @@ describe('delivery stream', () => {
 
   test('requesting customer-owned encryption creates key and configuration', () => {
     new firehose.DeliveryStream(stack, 'Delivery Stream', {
-      destination: mockS3Destination,
+      destinations: [mockS3Destination],
       encryption: firehose.StreamEncryption.CUSTOMER_MANAGED,
     });
 
@@ -160,7 +160,7 @@ describe('delivery stream', () => {
     const key = new kms.Key(stack, 'Key');
 
     new firehose.DeliveryStream(stack, 'Delivery Stream', {
-      destination: mockS3Destination,
+      destinations: [mockS3Destination],
       encryptionKey: key,
     });
 
@@ -195,7 +195,7 @@ describe('delivery stream', () => {
 
   test('requesting AWS-owned key does not create key and creates configuration', () => {
     new firehose.DeliveryStream(stack, 'Delivery Stream', {
-      destination: mockS3Destination,
+      destinations: [mockS3Destination],
       encryption: firehose.StreamEncryption.AWS_OWNED,
     });
 
@@ -224,7 +224,7 @@ describe('delivery stream', () => {
 
   test('requesting no encryption creates no configuration', () => {
     new firehose.DeliveryStream(stack, 'Delivery Stream', {
-      destination: mockS3Destination,
+      destinations: [mockS3Destination],
       encryption: firehose.StreamEncryption.UNENCRYPTED,
     });
 
@@ -252,7 +252,7 @@ describe('delivery stream', () => {
     const key = new kms.Key(stack, 'Key');
 
     expect(() => new firehose.DeliveryStream(stack, 'Delivery Stream', {
-      destination: mockS3Destination,
+      destinations: [mockS3Destination],
       encryption: firehose.StreamEncryption.AWS_OWNED,
       encryptionKey: key,
     })).toThrowError('Specified stream encryption as AWS_OWNED but provided a customer-managed key');
@@ -262,7 +262,7 @@ describe('delivery stream', () => {
     const key = new kms.Key(stack, 'Key');
 
     expect(() => new firehose.DeliveryStream(stack, 'Delivery Stream', {
-      destination: mockS3Destination,
+      destinations: [mockS3Destination],
       encryption: firehose.StreamEncryption.UNENCRYPTED,
       encryptionKey: key,
     })).toThrowError('Specified stream encryption as UNENCRYPTED but provided a customer-managed key');
@@ -272,17 +272,17 @@ describe('delivery stream', () => {
     const sourceStream = new kinesis.Stream(stack, 'Source Stream');
 
     expect(() => new firehose.DeliveryStream(stack, 'Delivery Stream 1', {
-      destination: mockS3Destination,
+      destinations: [mockS3Destination],
       encryption: firehose.StreamEncryption.AWS_OWNED,
       sourceStream,
     })).toThrowError('Requested server-side encryption but delivery stream source is a Kinesis Data Stream. Specify server-side encryption on the Data Stream instead.');
     expect(() => new firehose.DeliveryStream(stack, 'Delivery Stream 2', {
-      destination: mockS3Destination,
+      destinations: [mockS3Destination],
       encryption: firehose.StreamEncryption.CUSTOMER_MANAGED,
       sourceStream,
     })).toThrowError('Requested server-side encryption but delivery stream source is a Kinesis Data Stream. Specify server-side encryption on the Data Stream instead.');
     expect(() => new firehose.DeliveryStream(stack, 'Delivery Stream 3', {
-      destination: mockS3Destination,
+      destinations: [mockS3Destination],
       encryptionKey: new kms.Key(stack, 'Key'),
       sourceStream,
     })).toThrowError('Requested server-side encryption but delivery stream source is a Kinesis Data Stream. Specify server-side encryption on the Data Stream instead.');
@@ -293,7 +293,7 @@ describe('delivery stream', () => {
       assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
     });
     const deliveryStream = new firehose.DeliveryStream(stack, 'Delivery Stream', {
-      destination: mockS3Destination,
+      destinations: [mockS3Destination],
     });
 
     deliveryStream.grant(role, 'firehose:PutRecord');
@@ -316,7 +316,7 @@ describe('delivery stream', () => {
       assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
     });
     const deliveryStream = new firehose.DeliveryStream(stack, 'Delivery Stream', {
-      destination: mockS3Destination,
+      destinations: [mockS3Destination],
     });
 
     deliveryStream.grantWrite(role);
@@ -337,6 +337,15 @@ describe('delivery stream', () => {
     });
   });
 
+  test('supplying 0 or multiple destinations throws', () => {
+    expect(() => new firehose.DeliveryStream(stack, 'No Destinations', {
+      destinations: [],
+    })).toThrowError(/Only one destination is allowed per delivery stream/);
+    expect(() => new firehose.DeliveryStream(stack, 'Too Many Destinations', {
+      destinations: [mockS3Destination, mockS3Destination],
+    })).toThrowError(/Only one destination is allowed per delivery stream/);
+  });
+
   describe('metric methods provide a Metric with configured and attached properties', () => {
     beforeEach(() => {
       stack = new cdk.Stack(undefined, undefined, { env: { account: '111122223333', region: 'xx-west-1' } });
@@ -344,7 +353,7 @@ describe('delivery stream', () => {
 
     test('metric', () => {
       const deliveryStream = new firehose.DeliveryStream(stack, 'Delivery Stream', {
-        destination: mockS3Destination,
+        destinations: [mockS3Destination],
       });
 
       const metric = deliveryStream.metric('IncomingRecords');
@@ -362,7 +371,7 @@ describe('delivery stream', () => {
 
     test('metricIncomingBytes', () => {
       const deliveryStream = new firehose.DeliveryStream(stack, 'Delivery Stream', {
-        destination: mockS3Destination,
+        destinations: [mockS3Destination],
       });
 
       const metric = deliveryStream.metricIncomingBytes();
@@ -381,7 +390,7 @@ describe('delivery stream', () => {
 
     test('metricIncomingRecords', () => {
       const deliveryStream = new firehose.DeliveryStream(stack, 'Delivery Stream', {
-        destination: mockS3Destination,
+        destinations: [mockS3Destination],
       });
 
       const metric = deliveryStream.metricIncomingRecords();
@@ -400,7 +409,7 @@ describe('delivery stream', () => {
 
     test('metricBackupToS3Bytes', () => {
       const deliveryStream = new firehose.DeliveryStream(stack, 'Delivery Stream', {
-        destination: mockS3Destination,
+        destinations: [mockS3Destination],
       });
 
       const metric = deliveryStream.metricBackupToS3Bytes();
@@ -419,7 +428,7 @@ describe('delivery stream', () => {
 
     test('metricBackupToS3DataFreshness', () => {
       const deliveryStream = new firehose.DeliveryStream(stack, 'Delivery Stream', {
-        destination: mockS3Destination,
+        destinations: [mockS3Destination],
       });
 
       const metric = deliveryStream.metricBackupToS3DataFreshness();
@@ -438,7 +447,7 @@ describe('delivery stream', () => {
 
     test('metricBackupToS3Records', () => {
       const deliveryStream = new firehose.DeliveryStream(stack, 'Delivery Stream', {
-        destination: mockS3Destination,
+        destinations: [mockS3Destination],
       });
 
       const metric = deliveryStream.metricBackupToS3Records();
@@ -460,7 +469,7 @@ describe('delivery stream', () => {
     const vpc = new ec2.Vpc(stack, 'VPC');
     const securityGroup = new ec2.SecurityGroup(stack, 'Security Group', { vpc });
     const deliveryStream = new firehose.DeliveryStream(stack, 'Delivery Stream', {
-      destination: mockS3Destination,
+      destinations: [mockS3Destination],
     });
 
     securityGroup.connections.allowFrom(deliveryStream, ec2.Port.allTcp());
@@ -487,7 +496,7 @@ describe('delivery stream', () => {
     const vpc = new ec2.Vpc(stack, 'VPC');
     const securityGroup = new ec2.SecurityGroup(stack, 'Security Group', { vpc });
     const deliveryStream = new firehose.DeliveryStream(stack, 'Delivery Stream', {
-      destination: mockS3Destination,
+      destinations: [mockS3Destination],
     });
 
     securityGroup.connections.allowFrom(deliveryStream, ec2.Port.allTcp());
@@ -503,7 +512,7 @@ describe('delivery stream', () => {
 
   test('can add tags', () => {
     const deliveryStream = new firehose.DeliveryStream(stack, 'Delivery Stream', {
-      destination: mockS3Destination,
+      destinations: [mockS3Destination],
     });
 
     cdk.Tags.of(deliveryStream).add('tagKey', 'tagValue');
