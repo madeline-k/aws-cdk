@@ -2,7 +2,6 @@ import * as iam from '@aws-cdk/aws-iam';
 import * as firehose from '@aws-cdk/aws-kinesisfirehose';
 import * as kms from '@aws-cdk/aws-kms';
 import * as logs from '@aws-cdk/aws-logs';
-import * as s3 from '@aws-cdk/aws-s3';
 import * as cdk from '@aws-cdk/core';
 
 /**
@@ -60,7 +59,7 @@ export enum BackupMode {
 /**
  * Logging related properties for a delivery stream destination.
  */
-interface DestinationLoggingProps {
+export interface DestinationLoggingProps {
   /**
    * If true, log errors when data transformation or data delivery fails.
    *
@@ -79,12 +78,12 @@ interface DestinationLoggingProps {
 }
 
 /**
- * Common properties for defining a backup, intermediary, or final S3 destination for a Kinesis Data Firehose delivery stream.
+ * Buffering related properties for a delivery stream destination.
  */
-export interface CommonDestinationS3Props {
+export interface DestinationBufferingProps {
   /**
    * The length of time that Firehose buffers incoming data before delivering
-   * it to the S3 bucket.
+   * it to the destination.
    *
    * Minimum: Duration.seconds(60)
    * Maximum: Duration.seconds(900)
@@ -95,15 +94,20 @@ export interface CommonDestinationS3Props {
 
   /**
    * The size of the buffer that Kinesis Data Firehose uses for incoming data before
-   * delivering it to the S3 bucket.
+   * delivering it to the destination.
    *
    * Minimum: Size.mebibytes(1)
    * Maximum: Size.mebibytes(128)
    *
    * @default Size.mebibytes(5)
-   */
+  */
   readonly bufferingSize?: cdk.Size;
+}
 
+/**
+ * Common properties for defining a backup, intermediary, or final S3 destination for a Kinesis Data Firehose delivery stream.
+ */
+export interface CommonDestinationS3Props extends DestinationBufferingProps {
   /**
    * The type of compression that Kinesis Data Firehose uses to compress the data
    * that it delivers to the Amazon S3 bucket.
@@ -145,30 +149,6 @@ export interface CommonDestinationS3Props {
 }
 
 /**
- * Properties for defining an S3 backup destination.
- *
- * S3 backup is available for all destinations, regardless of whether the final destination is S3 or not.
- */
-export interface DestinationS3BackupProps extends DestinationLoggingProps, CommonDestinationS3Props {
-  /**
-   * The S3 bucket that will store data and failed records.
-   *
-   * @default - If `backup` is set to `BackupMode.ALL` or `BackupMode.FAILED`, a bucket will be created for you.
-   */
-  readonly bucket?: s3.IBucket;
-
-  /**
-   * Indicates the mode by which incoming records should be backed up to S3, if any.
-   *
-   * If `backupBucket ` is provided, this will be implicitly set to `BackupMode.ALL`.
-   *
-   * @default - If `backupBucket` is provided, the default will be `BackupMode.ALL`. Otherwise,
-   * source records are not backed up to S3.
-  */
-  readonly mode?: BackupMode;
-}
-
-/**
  * Generic properties for defining a delivery stream destination.
  */
 export interface CommonDestinationProps extends DestinationLoggingProps {
@@ -187,11 +167,4 @@ export interface CommonDestinationProps extends DestinationLoggingProps {
    * @default - no data transformation will occur.
    */
   readonly processor?: firehose.IDataProcessor;
-
-  /**
-   * The configuration for backing up source records to S3.
-   *
-   * @default - source records will not be backed up to S3.
-   */
-  readonly s3Backup?: DestinationS3BackupProps;
 }

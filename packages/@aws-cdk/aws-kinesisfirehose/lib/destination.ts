@@ -14,6 +14,13 @@ export interface DestinationConfig {
   readonly extendedS3DestinationConfiguration?: CfnDeliveryStream.ExtendedS3DestinationConfigurationProperty;
 
   /**
+   * Elasticsearch destination configuration properties.
+   *
+   * @default - Elasticsearch destination is not configured.
+   */
+  readonly elasticsearchDestinationConfiguration?: CfnDeliveryStream.ElasticsearchDestinationConfigurationProperty;
+
+  /**
    * Any resources that were created by the destination when binding it to the stack that must be deployed before the delivery stream is deployed.
    *
    * @default []
