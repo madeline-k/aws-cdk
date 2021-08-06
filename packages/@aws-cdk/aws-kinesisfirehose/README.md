@@ -122,6 +122,153 @@ const s3Destination = new destinations.S3Bucket(bucket, {
 
 See: [Custom S3 Prefixes](https://docs.aws.amazon.com/firehose/latest/dev/s3-prefixes.html) in the *Kinesis Data Firehose Developer Guide*.
 
+### Elasticsearch
+
+Defining a delivery stream with an Elasticsearch domain destination. The only required property is `indexName`.
+A new index will be created if the the specified index name does not exist.
+
+```ts
+import * as es from '@aws-cdk/aws-elasticsearch';
+import * as destinations from '@aws-cdk/aws-kinesisfirehose-destinations';
+
+const domain = new es.Domain(stack, 'Domain', {
+  version: es.ElasticsearchVersion.V7_9,
+});
+
+const elasticsearchDestination = new destinations.ElasticsearchDomain(domain, {
+  indexName: 'my_index',
+});
+
+new DeliveryStream(this, 'Delivery Stream', {
+  destinations: [elasticsearchDestination],
+});
+```
+
+#### Vpc Configuration
+
+TODO
+
+#### Type name
+
+You can specify an Elasticsearch type name. A new type will be created if the specified type name does not exist. For Elasticsearch 6.x, there
+can be only one type per index. If you try to specify a new type for an existing index that already has another type, Kinesis Data Firehose returns
+an error during run time. Type name is not supported for Elasticsearch 7.x.
+
+```ts
+import * as es from '@aws-cdk/aws-elasticsearch';
+import * as destinations from '@aws-cdk/aws-kinesisfirehose-destinations';
+
+const domain = new es.Domain(stack, 'Domain', {
+  version: es.ElasticsearchVersion.V6_8,
+});
+
+const elasticsearchDestination = new destinations.ElasticsearchDomain(domain, {
+  indexName: 'my_index',
+  typeName: 'my_type',
+});
+
+new DeliveryStream(this, 'Delivery Stream', {
+  destinations: [elasticsearchDestination],
+});
+```
+
+#### Index rotation
+
+Index rotation appends a timestamp to the IndexName to facilitate the expiration of old data. For more information, see
+[Index Rotation for the Amazon ES Destination](https://docs.aws.amazon.com/firehose/latest/dev/basic-deliver.html#es-index-rotation).
+The default value is `IndexRotationPeriod.ONE_DAY`.
+
+```ts fixture=with-domain
+import * as destinations from '@aws-cdk/aws-kinesisfirehose-destinations';
+
+const elasticsearchDestination = new destinations.ElasticsearchDomain(domain, {
+  indexName: 'my_index',
+  indexRotation: destinations.IndexRotationPeriod.ONE_MONTH,
+});
+
+new DeliveryStream(this, 'Delivery Stream', {
+  destinations: [elasticsearchDestination],
+});
+```
+
+#### Retry interval
+
+With the Elasticsearch domain destination, you can specify a retry interval, which defines the retry behavior in case Kinesis Data Firehose
+is unable to deliver documents to Amazon ES.  After an initial failure to deliver to Amazon ES, the total amount of time during which Kinesis
+Data Firehose retries delivery (including the first attempt). After this time has elapsed, the failed documents are written to Amazon S3.
+Default value is 300 seconds (5 minutes). A value of 0 (zero) results in no retries. 
+
+```ts fixture=with-domain
+import * as destinations from '@aws-cdk/aws-kinesisfirehose-destinations';
+
+const elasticsearchDestination = new destinations.ElasticsearchDomain(domain, {
+  indexName: 'my_index',
+  retryInterval: cdk.Duration.minutes(10),
+});
+
+new DeliveryStream(this, 'Delivery Stream', {
+  destinations: [elasticsearchDestination],
+});
+```
+
+#### Elasticsearch destination backup
+
+Kinesis Data Firehose writes any documents that could not be indexed to the configured Amazon S3 destination, with `elasticsearch-failed/`
+appended to the key prefix. When you create an `ElasticsearchDomain` object, an S3 bucket is created automatically and the backup behavior is configured
+by default. To customize the S3 backup behavior, modify the `s3Backup` property.
+
+```ts fixture=with-bucket
+import * as destinations from '@aws-cdk/aws-kinesisfirehose-destinations';
+import * as kms from '@aws-cdk/aws-kms';
+import * as s3 from '@aws-cdk/aws-s3';
+
+// Kinesis Data Firehose delivers all incoming records to Amazon S3, and also writes failed documents
+// with elasticsearch-failed/ appended to the prefix.
+new DeliveryStream(this, 'Delivery Stream Backup All', {
+  destinations: [
+    new destinations.ElasticsearchDomain(domain, {
+      indexName: 'my_index',
+      s3Backup: {
+        mode: BackupMode.ALL,
+      }
+    }),
+  ],
+});
+// Explicitly provide an S3 bucket where all failed documents will be backed up.
+const backupBucket = new s3.Bucket(this, 'Bucket');
+new DeliveryStream(this, 'Delivery Stream Backup Explicit Bucket', {
+  destinations: [
+    new destinations.ElasticsearchDomain(domain, {
+      indexName: 'my_index',
+      s3Backup: {
+        bucket: backupBucket,
+      }
+    }),
+  ],
+});
+// Other customization options for the backup S3 bucket
+const key = new kms.Key(this, 'BackupEncryptionKey');
+new DeliveryStream(this, 'Delivery Stream Backup All Explicit Prefix', {
+  destinations: [
+    new destinations.ElasticsearchDomain(domain, {
+      indexName: 'my_index',
+      s3Backup: {
+        mode: destinations.BackupMode.ALL,
+        bucket: backupBucket,
+        compression: destinations.Compression.ZIP,
+        dataOutputPrefix: 'backupPrefix',
+        errorOutputPrefix: 'elasticsearch-failed/',
+        bufferingInterval: cdk.Duration.seconds(60),
+        bufferingSize: cdk.Size.mebibytes(1),
+        encryptionKey: key,
+    },
+    }),
+  ],
+});
+```
+
+The Elasticsearch destination also supports [logging](#Logs), [buffering](#Buffering), and [data transformation](#Data transformation with AWS Lambda). See the below sections for more detail.
+
 ## Server-side Encryption
 
 Enabling server-side encryption (SSE) requires Kinesis Data Firehose to encrypt all data
@@ -318,8 +465,8 @@ the configured destination. Backed up data can be all the data that the delivery
 attempted to deliver or just data that it failed to deliver (Redshift and S3 destinations
 can only backup all data). CDK can create a new S3 bucket where it will back up data or
 you can provide a bucket where data will be backed up. You can also provide a prefix under
-which your backed-up data will be placed within the bucket. By default, source data is not
-backed up to S3.
+which your backed-up data will be placed within the bucket. Default behavior for backing up
+source data varies based on the destination type.
 
 ```ts fixture=with-bucket
 import * as destinations from '@aws-cdk/aws-kinesisfirehose-destinations';

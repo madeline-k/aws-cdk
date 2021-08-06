@@ -60,28 +60,7 @@ export interface ElasticsearchDestinationS3BackupProps extends CommonDestination
  */
 export interface ElasticsearchDomainProps extends CommonDestinationProps, DestinationLoggingProps, DestinationBufferingProps {
   /**
-   * The configuration for backing up source records to S3.
-   *
-   * @default - An S3 bucket will be created for you. And only failed source records will be backed up.
-   */
-  readonly s3Backup?: ElasticsearchDestinationS3BackupProps;
-
-  /**
-   * After an initial failure to deliver to Amazon ES, the total amount of time during which
-   * Kinesis Data Firehose re-attempts delivery (including the first attempt). If Kinesis Data Firehose
-   * can't deliver the data within the specified time, it writes the data to the backup S3 bucket.
-   *
-   * A value of Duration.seconds(0) results in no retries.
-   *
-   * Minimum: Duration.seconds(0)
-   * Maximum: Duration.seconds(7200)
-   *
-   * @default - Duration.seconds(300)
-   */
-  readonly retryInterval?: Duration;
-
-  /**
-   * The name of the Elasticsearch index to which Kinesis Data Firehose adds data for indexing.
+   * The name of the Elasticsearch index to which Kinesis Data Firehose adds data for indexing. A new index will be created if the the specified index name does not exist.
    *
    * Elasticsearch index name must be lower-case, must not begin with an underscore, and must not contain commas.
    */
@@ -98,7 +77,31 @@ export interface ElasticsearchDomainProps extends CommonDestinationProps, Destin
   readonly indexRotation?: IndexRotationPeriod;
 
   /**
-   * The Elasticsearch type name that Amazon ES adds to documents when indexing data.
+   * After an initial failure to deliver to Amazon ES, the total amount of time during which
+   * Kinesis Data Firehose re-attempts delivery (including the first attempt). If Kinesis Data Firehose
+   * can't deliver the data within the specified time, it writes the data to the backup S3 bucket.
+   *
+   * A value of Duration.seconds(0) results in no retries.
+   *
+   * Minimum: Duration.seconds(0)
+   * Maximum: Duration.seconds(7200)
+   *
+   * @default - Duration.seconds(300)
+   */
+  readonly retryInterval?: Duration;
+
+  /**
+   * The configuration for backing up source records to S3.
+   *
+   * @default - An S3 bucket will be created for you. And only failed source records will be backed up.
+   */
+  readonly s3Backup?: ElasticsearchDestinationS3BackupProps;
+
+  /**
+   * The Elasticsearch type name. A new type will be created if the specified type name does not exist. For Elasticsearch 6.x, there can be only one type per index.
+   * If you try to specify a new type for an existing index that already has another type, Kinesis Data Firehose returns an error during run time.
+   *
+   * For Elasticsearch 7.x, don't specify a `typeName`.
    *
    * @default - no type name is added
    */

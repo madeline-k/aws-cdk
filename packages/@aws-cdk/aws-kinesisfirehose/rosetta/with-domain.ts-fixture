@@ -1,0 +1,13 @@
+// Fixture with a bucket already created
+import { Construct, Stack } from '@aws-cdk/core';
+import { DeliveryStream, DestinationBindOptions, DestinationConfig, IDestination } from '@aws-cdk/aws-kinesisfirehose';
+import * as es from '@aws-cdk/aws-elasticsearch';
+declare const domain: es.Domain;
+
+class Fixture extends Stack {
+  constructor(scope: Construct, id: string) {
+    super(scope, id);
+
+    /// here
+  }
+}
