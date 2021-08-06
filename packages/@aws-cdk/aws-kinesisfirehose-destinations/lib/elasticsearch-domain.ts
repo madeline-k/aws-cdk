@@ -4,8 +4,8 @@ import * as firehose from '@aws-cdk/aws-kinesisfirehose';
 import * as s3 from '@aws-cdk/aws-s3';
 import { Duration } from '@aws-cdk/core';
 import { Construct } from 'constructs';
-import { BackupMode, CommonDestinationS3Props, DestinationBufferingProps, DestinationLoggingProps } from './common';
-import { createBackupConfig, createBufferingHints, createLoggingOptions } from './private/helpers';
+import { BackupMode, CommonDestinationProps, CommonDestinationS3Props, DestinationBufferingProps, DestinationLoggingProps } from './common';
+import { createBackupConfig, createBufferingHints, createLoggingOptions, createProcessingConfig } from './private/helpers';
 
 /**
  * Possible index rotation periods for Elasticsearch index rotation.
@@ -58,7 +58,7 @@ export interface ElasticsearchDestinationS3BackupProps extends CommonDestination
 /**
  * Props for defining an S3 destination of a Kinesis Data Firehose delivery stream.
  */
-export interface ElasticsearchDomainProps extends DestinationLoggingProps, DestinationBufferingProps {
+export interface ElasticsearchDomainProps extends CommonDestinationProps, DestinationLoggingProps, DestinationBufferingProps {
   /**
    * The configuration for backing up source records to S3.
    *
@@ -103,15 +103,6 @@ export interface ElasticsearchDomainProps extends DestinationLoggingProps, Desti
    * @default - no type name is added
    */
   readonly typeName?: string;
-
-  /**
-   * The IAM role associated with this destination.
-   *
-   * Assumed by Kinesis Data Firehose to invoke processors and write to destinations
-   *
-   * @default - a role will be created with default permissions
-   */
-  readonly role?: iam.IRole;
 }
 
 /**
@@ -120,6 +111,9 @@ export interface ElasticsearchDomainProps extends DestinationLoggingProps, Desti
 export class ElasticsearchDomain implements firehose.IDestination {
 
   constructor(private readonly domain: es.IDomain, private readonly props: ElasticsearchDomainProps) {
+    if (this.props.retryInterval?.toSeconds() && this.props.retryInterval.toSeconds() > 7200) {
+      throw new Error('retry interval too big');
+    };
     this.validateIndexName();
   }
 
@@ -148,7 +142,21 @@ export class ElasticsearchDomain implements firehose.IDestination {
       streamId: 'ElasticsearchDestination',
     }) ?? {};
 
-    const { backupConfig, dependables: backupDependables } = createBackupConfig(scope, role, this.props.s3Backup) ?? {};
+    let backupProps: ElasticsearchDestinationS3BackupProps;
+    if (!this.props.s3Backup) {
+      backupProps = {
+        mode: BackupMode.FAILED,
+      };
+    } else if (!this.props.s3Backup.mode) {
+      backupProps = {
+        mode: BackupMode.FAILED,
+        ...this.props.s3Backup,
+      };
+    } else {
+      backupProps = this.props.s3Backup;
+    }
+
+    const { backupConfig, dependables: backupDependables } = createBackupConfig(scope, role, backupProps) ?? {};
     if (!backupConfig) {
       throw new Error('Failed to create s3 backup configuration for Elasticsearch destination.');
     }
@@ -160,6 +168,7 @@ export class ElasticsearchDomain implements firehose.IDestination {
         domainArn: this.domain.domainArn,
         indexName: this.props.indexName,
         indexRotationPeriod: this.props.indexRotation,
+        processingConfiguration: createProcessingConfig(scope, role, this.props.processor),
         retryOptions: this.props.retryInterval
           ? { durationInSeconds: this.props.retryInterval.toSeconds() }
           : undefined,
@@ -173,9 +182,9 @@ export class ElasticsearchDomain implements firehose.IDestination {
   }
 
   private getS3BackupMode(): string | undefined {
-    return this.props.s3Backup?.mode === BackupMode.FAILED
-      ? 'FailedDocumentsOnly'
-      : 'AllDocuments';
+    return this.props.s3Backup?.mode === BackupMode.ALL
+      ? 'AllDocuments'
+      : 'FailedDocumentsOnly';
   }
 
   private validateIndexName(): void {
