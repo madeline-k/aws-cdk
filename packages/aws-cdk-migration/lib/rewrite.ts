@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import * as ts from 'typescript';
 
 /**
@@ -8,6 +9,11 @@ export interface RewriteOptions {
    * Optional module names that should result in replacing to something different than just 'aws-cdk-lib'.
    */
   readonly customModules?: { [moduleName: string]: string };
+
+  /**
+   * Optional flag to set for rewriting imports in alpha packages. When true, this will rewrite imports of generated L1s to reference aws-cdk-lib.
+   */
+  readonly isInAlphaPackage?: boolean;
 }
 
 /**
@@ -39,6 +45,15 @@ export function rewriteImports(sourceText: string, fileName: string = 'index.ts'
   const visitor = <T extends ts.Node>(node: T): ts.VisitResult<T> => {
     const moduleSpecifier = getModuleSpecifier(node);
     const newTarget = moduleSpecifier && updatedLocationOf(moduleSpecifier.text, options);
+
+    /*
+    if (moduleSpecifier) {
+      console.log('moduleSpecifier: ' + JSON.stringify(moduleSpecifier));
+    }
+    if (newTarget) {
+      console.log('newTarget: ' + newTarget);
+    }
+    */
 
     if (moduleSpecifier != null && newTarget != null) {
       replacements.push({ original: moduleSpecifier, updatedLocation: newTarget });
@@ -103,9 +118,15 @@ const EXEMPTIONS = new Set([
 ]);
 
 function updatedLocationOf(modulePath: string, options: RewriteOptions): string | undefined {
+  console.log('updateLocationOf() modulePath: ' + modulePath);
   const customModulePath = options.customModules?.[modulePath];
   if (customModulePath) {
     return customModulePath;
+  }
+
+  if (options.isInAlphaPackage && modulePath.endsWith('generated')) {
+    const modulePathSplit = modulePath.split(/[.\/]/);
+    return `aws-cdk-lib/aws-${modulePathSplit[modulePathSplit.length-2].replace('-canned-metrics', '')}`;
   }
 
   if (!modulePath.startsWith('@aws-cdk/') || EXEMPTIONS.has(modulePath)) {

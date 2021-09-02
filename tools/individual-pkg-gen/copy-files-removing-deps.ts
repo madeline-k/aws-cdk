@@ -1,8 +1,11 @@
+/* eslint-disable no-console */
 import * as path from 'path';
 import * as awsCdkMigration from 'aws-cdk-migration';
 import * as fs from 'fs-extra';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const lerna_project = require('@lerna/project');
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const ver = require('../../scripts/resolve-version');
 
 transformPackages();
 
@@ -42,6 +45,10 @@ function transformPackages(): void {
       if (ignoredFiles.includes(sourceFileName)) {
         continue;
       }
+      if (sourceFileName.match('.*generated.*')) {
+        console.log('skipping generated file: ' + sourceFileName);
+        continue;
+      }
 
       const source = path.join(srcDir, sourceFileName);
       const destination = path.join(destDir, sourceFileName);
@@ -71,10 +78,26 @@ function transformPackages(): void {
           }
         }
         fs.outputFileSync(destination, resultFileLines.join('\n'));
+      } else if (sourceFileName === 'index.ts') {
+        // remove any exports for generated L1s
+        const indexLines = fs.readFileSync(source).toString().split('\n');
+        const resultFileLines = [];
+        for (const line of indexLines) {
+          if (line.match('generated')) {
+            console.log('removing: ' + line + ' from: ' + srcDir + sourceFileName);
+            continue;
+          }
+          resultFileLines.push(line);
+        }
+        fs.outputFileSync(destination, resultFileLines.join('\n'));
       } else if (sourceFileName.endsWith('.ts') && !sourceFileName.endsWith('.d.ts')) {
         const sourceCode = fs.readFileSync(source).toString();
+        //
+        console.log('calling rewriteimports');
+        console.log('customModules: ' + JSON.stringify(alphaPackages));
         const sourceCodeOutput = awsCdkMigration.rewriteImports(sourceCode, sourceFileName, {
           customModules: alphaPackages,
+          isInAlphaPackage: true,
         });
         fs.outputFileSync(destination, sourceCodeOutput);
       } else {
@@ -98,6 +121,9 @@ function transformPackageJson(pkg: any, source: string, destination: string, alp
   const pkgUnscopedName = `${pkg.name.substring('@aws-cdk/'.length)}`;
 
   packageJson.name += '-alpha';
+  if (ver.alphaVersion) {
+    packageJson.version = ver.alphaVersion;
+  }
   packageJson.repository.directory = `packages/individual-packages/${pkgUnscopedName}`;
 
   // disable awslint (some rules are hard-coded to @aws-cdk/core)
@@ -160,7 +186,7 @@ function transformPackageJsonDependencies(packageJson: any, pkg: any, alphaPacka
         break;
       default:
         if (alphaPackages[dependency]) {
-          alphaDependencies[alphaPackages[dependency]] = pkg.version;
+          alphaDependencies[alphaPackages[dependency]] = packageJson.version;
         } else if (v1BundledDependencies.indexOf(dependency) !== -1) {
           // ...other than third-party dependencies, which are in bundledDependencies
           bundledDependencies[dependency] = packageJson.dependencies[dependency];
@@ -180,7 +206,7 @@ function transformPackageJsonDependencies(packageJson: any, pkg: any, alphaPacka
         break;
       default:
         if (alphaPackages[v1DevDependency]) {
-          alphaDevDependencies[alphaPackages[v1DevDependency]] = pkg.version;
+          alphaDevDependencies[alphaPackages[v1DevDependency]] = packageJson.version;
         } else if (!v1DevDependency.startsWith('@aws-cdk/')) {
           devDependencies[v1DevDependency] = packageJson.devDependencies[v1DevDependency];
         }
