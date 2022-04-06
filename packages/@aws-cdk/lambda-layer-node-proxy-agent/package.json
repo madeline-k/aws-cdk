@@ -113,7 +113,7 @@
     ]
   },
   "ubergen": {
-    "exclude": false
+    "exclude": true
   },
   "publishConfig": {
     "tag": "next"
